@@ -1,0 +1,61 @@
+﻿#include __enum_path__
+
+namespace Obs
+{
+template <>
+struct Enum<__full_name_to_replace__>
+{
+    using UnderlyingType = int;
+    using EnumType = __full_name_to_replace__;
+    static constexpr EnumType k_end = static_cast<EnumType>(static_cast<UnderlyingType>(__last_enum__) + 1);
+
+    static const char* GetFullEnumName() { return "__full_name_to_replace__"; }
+    static const char* GetEnumName() { return "__name_to_replace__"; }
+
+    static const Enum<EnumType>& IterableInstance() { static Enum<EnumType> instance; return instance; }
+
+    static UnderlyingType GetUnderlyingValue(EnumType enum_value)
+    {
+        return static_cast<UnderlyingType>(enum_value);
+    }
+
+    static EnumType GetValue(UnderlyingType value)
+    {
+        return static_cast<EnumType>(value);
+    }
+
+    static const char* GetName(EnumType enum_value)
+    {
+        switch (enum_value)
+        {
+__insert_name_mapping__
+            default: return nullptr;
+        }
+    }
+
+    struct EnumEntry
+    {
+        EnumType value;
+        UnderlyingType underlying_value;
+        const char* name;
+    };
+
+    struct Iterator
+    {
+        explicit Iterator(EnumType enum_value) : m_enum_value(static_cast<UnderlyingType>(enum_value)) {}
+
+        EnumEntry operator*() { return {.value = static_cast<EnumType>(m_enum_value), .underlying_value = m_enum_value, .name = GetName(static_cast<EnumType>(m_enum_value))}; }
+
+        Iterator& operator++() { m_enum_value++; return *this; } 
+
+        bool operator==(const Iterator& other) const { return m_enum_value == other.m_enum_value; }
+        bool operator!=(const Iterator& other) const { return m_enum_value != other.m_enum_value; }
+
+    private:
+        UnderlyingType m_enum_value;
+    };
+
+    static Iterator begin() { return Iterator(__first_entry__); }
+    static Iterator end() { return Iterator(k_end); }
+};
+} // namespace Obs

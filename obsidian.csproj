@@ -9,6 +9,21 @@
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="CppAst" Version="0.21.4" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="reflection-header.template">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="enum.template">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Workaround for issue https://github.com/microsoft/ClangSharp/issues/129 -->
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' AND '$(PackAsTool)' != 'true'">$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>
+  </PropertyGroup>
 
 </Project>

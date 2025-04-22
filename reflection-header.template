@@ -1,0 +1,11 @@
+﻿#pragma once
+
+namespace Obs
+{
+template <typename T>
+struct Enum
+{
+    static_assert(false, "Enum type does not have reflection data!");
+};
+} // namespace Obs
+
