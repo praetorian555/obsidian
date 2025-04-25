@@ -2,6 +2,7 @@
 using CommandLine;
 using CppAst;
 using Obsidian;
+using System.Reflection.Emit;
 
 ParserResult<Options> parserResult = Parser.Default.ParseArguments<Options>(args);
 parserResult.WithParsed(Generator.RunProgram);
@@ -47,30 +48,8 @@ namespace Obsidian
                 throw new Exception("Parsing of header files failed!");
             }
 
-            string generatedFile = File.ReadAllText("reflection-header.template");
-            foreach (CppNamespace ns in compilation.Namespaces)
-            {
-                foreach (CppEnum e in ns.Enums)
-                {
-                    bool needsReflection = false;
-                    foreach (CppAttribute attribute in e.TokenAttributes)
-                    {
-                        if (attribute.Name == "refl")
-                        {
-                            needsReflection = true;
-                            break;
-                        }
-                    }
-                    if (!needsReflection)
-                    {
-                        continue;
-                    }
-                    string generatedCpp = generator.GenerateReflectionInfo(e);
-                    generatedFile += generatedCpp;
-                    generatedFile += "\n";
-                }
-            }
-            generator.WriteToFile("reflection.hpp", generatedFile);
+            string generatedFileContent = generator.ProcessAst(compilation);
+            generator.WriteToFile("reflection.hpp", generatedFileContent );
         }
 
         private string _searchDirectory = string.Empty;
@@ -82,7 +61,7 @@ namespace Obsidian
         {
             _searchDirectory = options.SearchDirectory;
             if (!Directory.Exists(_searchDirectory))
-            {                
+            {
                 throw new Exception($"Search directory '{_searchDirectory}' does not exist!");
             }
             _destinationDirectory = options.DestinationDirectory;
@@ -154,6 +133,54 @@ namespace Obsidian
         {
             string fullPath = Path.Combine(_destinationDirectory, fileName);
             File.WriteAllText(fullPath, contents);
+        }
+
+        public void AppendEnumReflections(ref string outStr, CppContainerList<CppEnum> enums)
+        {
+            foreach (CppEnum e in enums)
+            {
+                bool needsReflection = false;
+                foreach (CppAttribute attribute in e.TokenAttributes)
+                {
+                    if (attribute.Name == "refl")
+                    {
+                        needsReflection = true;
+                        break;
+                    }
+                }
+                if (!needsReflection)
+                {
+                    continue;
+                }
+                string generatedCpp = GenerateReflectionInfo(e);
+                outStr += generatedCpp;
+                outStr += "\n";
+            }
+        }
+
+        public string ProcessAst(CppCompilation compilation)
+        {
+            string outReflectionContent = File.ReadAllText("reflection-header.template");
+
+            // Find all enums, only look for enums in namespaces, not nested in classes
+            // TODO: Add support for nested enums
+            AppendEnumReflections(ref outReflectionContent, compilation.Enums);
+            Queue<CppNamespace> namespaces = new Queue<CppNamespace>();
+            foreach (CppNamespace ns in compilation.Namespaces)
+            {
+                namespaces.Enqueue(ns);
+            }
+            while (namespaces.Count() > 0)
+            {
+                CppNamespace ns = namespaces.Dequeue();
+                AppendEnumReflections(ref outReflectionContent, ns.Enums);
+                foreach (CppNamespace nestedNamespace in ns.Namespaces)
+                {
+                    namespaces.Enqueue(nestedNamespace);
+                }
+            }
+
+            return outReflectionContent;
         }
 
     }
