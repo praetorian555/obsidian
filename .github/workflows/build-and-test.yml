@@ -1,0 +1,31 @@
+# .github/workflows/dotnet-build.yml
+name: Build Obsidian Console App
+
+on:
+  # Trigger on every push or pull-request to the default branch
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest          # Change to windows-latest if you prefer MSBuild-style tooling
+    strategy:
+      matrix:
+        configuration: [ Debug, Release ]
+
+    steps:
+    - name: ⬇️  Checkout source
+      uses: actions/checkout@v4
+
+    - name: 🛠️  Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'     # Pin to the major version you target
+
+    - name: 📦  Restore dependencies
+      run: dotnet restore
+
+    - name: 🔨  Build – ${{ matrix.configuration }}
+      run: dotnet build --configuration ${{ matrix.configuration }} --no-restore
