@@ -400,4 +400,5 @@ FodyWeavers.xsd
 *.sln.iml
 
 test-cpp/.idea
-test-cpp/build
+cpp-build/
+Properties/
