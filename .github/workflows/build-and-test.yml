@@ -10,10 +10,12 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest          # Change to windows-latest if you prefer MSBuild-style tooling
+    name: ${{matrix.os}} / $${{matrix.configuration}}
+    runs-on: ${{matrix.os}}
     strategy:
       matrix:
         configuration: [ Debug, Release ]
+        os: [ windows-latest, ubuntu-latest ]
 
     steps:
     - name: ⬇️  Checkout source
