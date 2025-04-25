@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: ${{matrix.os}} / $${{matrix.configuration}}
+    name: ${{matrix.os}} / ${{matrix.configuration}}
     runs-on: ${{matrix.os}}
     strategy:
       matrix:
