@@ -33,7 +33,7 @@ add_custom_target(
         VERBATIM
 )
 
-add_executable(test-cpp-project test-cpp/src/main.cpp test-cpp/include/types.hpp  test-cpp/third-party/catch2/src/catch_amalgamated.cpp)
+add_executable(test-cpp-project test-cpp/src/main.cpp test-cpp/src/secondary.cpp test-cpp/include/types.hpp  test-cpp/third-party/catch2/src/catch_amalgamated.cpp)
 add_dependencies(test-cpp-project warnings options generate_reflection)
 target_compile_features(test-cpp-project PRIVATE cxx_std_20)
 target_compile_definitions(test-cpp-project PRIVATE CATCH_AMALGAMATED_CUSTOM_MAIN)
