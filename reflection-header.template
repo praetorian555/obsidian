@@ -1,6 +1,9 @@
-﻿#pragma once
+﻿// AUTO-GENERATED. DO NOT CHANGE.
+
+#pragma once
 
 #include <cstring>
+#include <vector>
 
 __refl_includes__
 
@@ -14,6 +17,77 @@ struct Enum
 };
 
 __refl_enum__
+
+struct EnumCollection
+{
+    struct EnumItem
+    {
+        const char* name = "";
+        uint64_t value = 0xFFFFFFFFFFFFFFFF;
+    };
+
+    struct EnumEntry
+    {
+        const char* name;
+        const char* full_name;
+        int underlying_type_size;
+        std::vector<EnumItem> items;
+    };
+
+    std::vector<EnumEntry> entries;
+    EnumEntry default_entry;
+
+    static EnumCollection& Get()
+    {
+        static EnumCollection enum_iterator;
+        return enum_iterator;
+    }
+
+    EnumCollection() : entries
+        {
+__refl_enum_collection_entries__
+        }
+    {
+    }
+
+    EnumEntry& GetEnumEntry(const char* name)
+    {
+        for (EnumEntry& entry : entries)
+        {
+            if (strcmp(entry.name, name) == 0)
+            {
+                return entry;
+            }
+        }
+        assert(false && "Enum by that name not found!");
+        return default_entry;
+    }
+
+    void GetValue(void* dst, const char* enum_name, const char* item_name)
+    {
+        EnumCollection& enum_iterator = Get();
+        for (EnumEntry& enum_entry : enum_iterator.entries)
+        {
+            if (strcmp(enum_entry.name, enum_name) == 0)
+            {
+                for (EnumItem& item : enum_entry.items)
+                {
+                    if (strcmp(item.name, item_name) == 0)
+                    {
+                        Write(dst, item, enum_entry.underlying_type_size);
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+private:
+    static void Write(void* dst, const EnumItem& item, int item_size)
+    {
+        memcpy(dst, reinterpret_cast<const void*>(&item.value), item_size);
+    }
+};
 
 } // namespace Obs
 

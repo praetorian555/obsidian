@@ -105,7 +105,7 @@ namespace Obsidian
             return CppParser.ParseFiles(headerFiles.ToList(), options);
         }
 
-        public string GenerateReflectionInfo(List<string> outHeadersToInclude, CppEnum e)
+        public string GenerateReflectionInfo(ref string enumEntriesContent, List<string> outHeadersToInclude, CppEnum e)
         {
             string template = File.ReadAllText("enum.template");
             template = template.Replace("__enum_name__", e.Name);
@@ -128,6 +128,22 @@ namespace Obsidian
             {
                 throw new Exception("Enumeration can't be empty!");
             }
+
+            enumEntriesContent += $"\t\t\t{{\n";
+            enumEntriesContent += $"\t\t\t\t.name = \"{e.Name}\",\n";
+            enumEntriesContent += $"\t\t\t\t.full_name = \"{e.FullName}\",\n";
+            enumEntriesContent += $"\t\t\t\t.underlying_type_size = {e.IntegerType.SizeOf},\n";
+            enumEntriesContent += $"\t\t\t\t.items = {{\n";
+            foreach (CppEnumItem item in e.Items)
+            {
+                enumEntriesContent += $"\t\t\t\t\t{{\n";
+                enumEntriesContent += $"\t\t\t\t\t\t.name = \"{item.Name}\",\n";
+                enumEntriesContent += $"\t\t\t\t\t\t.value = static_cast<uint64_t>({item.Value})\n";
+                enumEntriesContent += $"\t\t\t\t\t}},\n";
+            }
+            enumEntriesContent += $"\t\t\t\t}}\n";
+            enumEntriesContent += $"\t\t\t}},\n";
+
             return template;
         }
 
@@ -137,7 +153,7 @@ namespace Obsidian
             File.WriteAllText(fullPath, contents);
         }
 
-        public void AppendEnumReflections(ref string outStr, List<string> outHeadersToInclude, CppContainerList<CppEnum> enums)
+        public void AppendEnumReflections(ref string outStr, ref string enumEntriesContent, List<string> outHeadersToInclude, CppContainerList<CppEnum> enums)
         {
             foreach (CppEnum e in enums)
             {
@@ -154,7 +170,7 @@ namespace Obsidian
                 {
                     continue;
                 }
-                string generatedCpp = GenerateReflectionInfo(outHeadersToInclude, e);
+                string generatedCpp = GenerateReflectionInfo(ref enumEntriesContent, outHeadersToInclude, e);
                 outStr += generatedCpp;
                 outStr += "\n";
             }
@@ -164,11 +180,12 @@ namespace Obsidian
         {
             string outReflectionContent = File.ReadAllText("reflection-header.template");
             string enumReflectionContent = string.Empty;
+            string enumEntriesContent = string.Empty;
             List<string> headersToInclude = new List<string>();
 
             // Find all enums, only look for enums in namespaces, not nested in classes
             // TODO: Add support for nested enums
-            AppendEnumReflections(ref enumReflectionContent, headersToInclude, compilation.Enums);
+            AppendEnumReflections(ref enumReflectionContent, ref enumEntriesContent, headersToInclude, compilation.Enums);
             Queue<CppNamespace> namespaces = new Queue<CppNamespace>();
             foreach (CppNamespace ns in compilation.Namespaces)
             {
@@ -177,7 +194,7 @@ namespace Obsidian
             while (namespaces.Count() > 0)
             {
                 CppNamespace ns = namespaces.Dequeue();
-                AppendEnumReflections(ref enumReflectionContent, headersToInclude, ns.Enums);
+                AppendEnumReflections(ref enumReflectionContent, ref enumEntriesContent, headersToInclude, ns.Enums);
                 foreach (CppNamespace nestedNamespace in ns.Namespaces)
                 {
                     namespaces.Enqueue(nestedNamespace);
@@ -189,6 +206,7 @@ namespace Obsidian
             {
                 headersToIncludeContent += $"#include \"{headerPath}\"\n";
             }
+            outReflectionContent = outReflectionContent.Replace("__refl_enum_collection_entries__", enumEntriesContent);
             outReflectionContent = outReflectionContent.Replace("__refl_includes__", headersToIncludeContent);
             outReflectionContent = outReflectionContent.Replace("__refl_enum__", enumReflectionContent);
 
