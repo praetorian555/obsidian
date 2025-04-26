@@ -22,11 +22,11 @@ namespace Obsidian
         [Option("destination-path", Required = true, HelpText = "Folder in which header files with generated reflection code will be placed.")]
         public string DestinationDirectory { get; set; } = string.Empty;
 
-        [Option("include-folders", Required = false, HelpText = "Which folders to use to resolve includes in your header files.")]
-        public IEnumerable<string>? IncludeFolders { get; set; } = null;
+        [Option("include-folders", Separator = ';', Required = false, HelpText = "Which folders to use to resolve includes in your header files.")]
+        public IEnumerable<string> IncludeFolders { get; set; } = new List<string>();
 
         [Option("include-system-folders", Separator = ';', Required = false, HelpText = "Which folders to use to resolve system includes in your header files.")]
-        public IEnumerable<string>? IncludeSystemFolders { get; set; } = null;
+        public IEnumerable<string> IncludeSystemFolders { get; set; } = new List<string>();
 
         [Option("cpp-std", Required = false, HelpText = "What C++ standard to use.")]
         public CppStandard CppStandard { get; set; } = CppStandard.Std20;
@@ -52,33 +52,40 @@ namespace Obsidian
             generator.WriteToFile("reflection.hpp", generatedFileContent);
         }
 
-        private string _searchDirectory = string.Empty;
-        private string _destinationDirectory = string.Empty;
-        private IEnumerable<string>? _includeDirectories = null;
-        private IEnumerable<string>? _includeSystemDirectories = null;
+        private Options _options;
+
         private CppStandard _cppStandard { get; set; }
 
         public Generator(Options options)
         {
-            _searchDirectory = options.SearchDirectory;
-            if (!Directory.Exists(_searchDirectory))
+            _options = options;
+            if (!Directory.Exists(_options.SearchDirectory))
             {
-                throw new Exception($"Search directory '{_searchDirectory}' does not exist!");
+                throw new Exception($"Search directory '{_options.SearchDirectory}' does not exist!");
             }
-            _destinationDirectory = options.DestinationDirectory;
-            if (!Directory.Exists(_destinationDirectory))
+            if (!Directory.Exists(_options.DestinationDirectory))
             {
-                Directory.CreateDirectory(_destinationDirectory);
+                Directory.CreateDirectory(_options.DestinationDirectory);
             }
-            _includeDirectories = options.IncludeFolders?.ToList();
-            _includeSystemDirectories = options.IncludeSystemFolders?.ToList();
-            _cppStandard = options.CppStandard;
+
+            if (options.IncludeFolders.Any() || options.IncludeSystemFolders.Any())
+            {
+                Console.WriteLine("We will try to resolve includes in your header files using following directories:");
+                foreach (string dir in options.IncludeFolders)
+                {
+                    Console.WriteLine($"\t{dir}");
+                }
+                foreach (string dir in options.IncludeSystemFolders)
+                {
+                    Console.WriteLine($"\t{dir}");
+                }
+            }
         }
 
         public IEnumerable<string> GetHeaderFiles()
         {
-            IEnumerable<string> hFiles = Directory.EnumerateFiles(_searchDirectory, "*.h", SearchOption.AllDirectories);
-            IEnumerable<string> hppFiles = Directory.EnumerateFiles(_searchDirectory, "*.hpp", SearchOption.AllDirectories);
+            IEnumerable<string> hFiles = Directory.EnumerateFiles(_options.SearchDirectory, "*.h", SearchOption.AllDirectories);
+            IEnumerable<string> hppFiles = Directory.EnumerateFiles(_options.SearchDirectory, "*.hpp", SearchOption.AllDirectories);
             return hFiles.Concat(hppFiles);
         }
 
@@ -86,9 +93,6 @@ namespace Obsidian
         {
             switch (std)
             {
-                case CppStandard.Std11: return "-std=c++11";
-                case CppStandard.Std14: return "-std=c++14";
-                case CppStandard.Std17: return "-std=c++17";
                 case CppStandard.Std20: return "-std=c++20";
             }
             return "";
@@ -100,17 +104,8 @@ namespace Obsidian
             options.ParseTokenAttributes = true;
             options.ParseSystemIncludes = false;
             options.AdditionalArguments.Add(GetCppStandardCompilerArgument(_cppStandard));
-            if (_includeDirectories != null)
-            {
-                options.IncludeFolders.AddRange(_includeDirectories);
-            }
-            if (_includeSystemDirectories != null && _includeSystemDirectories.Count() > 0)
-            {
-                foreach (string dir in _includeSystemDirectories) {
-                    Console.WriteLine(dir);
-                    }
-                options.SystemIncludeFolders.AddRange(_includeSystemDirectories);
-            }
+            options.IncludeFolders.AddRange(_options.IncludeFolders);
+            options.SystemIncludeFolders.AddRange(_options.IncludeSystemFolders);
             return CppParser.ParseFiles(headerFiles.ToList(), options);
         }
 
@@ -158,7 +153,7 @@ namespace Obsidian
 
         public void WriteToFile(string fileName, string contents)
         {
-            string fullPath = Path.Combine(_destinationDirectory, fileName);
+            string fullPath = Path.Combine(_options.DestinationDirectory, fileName);
             File.WriteAllText(fullPath, contents);
         }
 
