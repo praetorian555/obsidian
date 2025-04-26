@@ -2,6 +2,10 @@
 
 #include <cstdint>
 
+#if !defined(DONT_CRASH)
+#error This should not happen!
+#endif
+
 namespace FirstNamespace
 {
 

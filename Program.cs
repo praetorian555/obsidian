@@ -28,6 +28,9 @@ namespace Obsidian
         [Option("include-system-folders", Separator = ';', Required = false, HelpText = "Which folders to use to resolve system includes in your header files.")]
         public IEnumerable<string> IncludeSystemFolders { get; set; } = new List<string>();
 
+        [Option("defines", Separator = ';', Required = false, HelpText = "List of defines separated by ; that you use to compile your header files.")]
+        public IEnumerable<string> Defines { get; set; } = new List<string>();
+
         [Option("cpp-std", Required = false, HelpText = "What C++ standard to use.")]
         public CppStandard CppStandard { get; set; } = CppStandard.Std20;
     }
@@ -80,6 +83,14 @@ namespace Obsidian
                     Console.WriteLine($"\t{dir}");
                 }
             }
+            if (options.Defines.Any())
+            {
+                Console.WriteLine("We will use following defines when compiling headers:");
+                foreach (string define in options.Defines)
+                {
+                    Console.WriteLine($"\t{define}");
+                }
+            }
         }
 
         public IEnumerable<string> GetHeaderFiles()
@@ -106,6 +117,7 @@ namespace Obsidian
             options.AdditionalArguments.Add(GetCppStandardCompilerArgument(_cppStandard));
             options.IncludeFolders.AddRange(_options.IncludeFolders);
             options.SystemIncludeFolders.AddRange(_options.IncludeSystemFolders);
+            options.Defines.AddRange(_options.Defines);
             return CppParser.ParseFiles(headerFiles.ToList(), options);
         }
 

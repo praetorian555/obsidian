@@ -36,6 +36,7 @@ add_custom_target(
             --destination-path=${CMAKE_CURRENT_BINARY_DIR}/include
             --include-folders=${CMAKE_CURRENT_SOURCE_DIR}/include;${CMAKE_CURRENT_BINARY_DIR}/include
             ${SYSTEM_INCLUDE_DIRS_ARG}
+            --defines=DONT_CRASH
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Generating reflection headers before building test cpp project..."
         VERBATIM
@@ -44,7 +45,7 @@ add_custom_target(
 add_executable(test-cpp-project test-cpp/src/main.cpp test-cpp/src/secondary.cpp test-cpp/include/types.hpp  test-cpp/third-party/catch2/src/catch_amalgamated.cpp)
 add_dependencies(test-cpp-project warnings options generate_reflection)
 target_compile_features(test-cpp-project PRIVATE cxx_std_20)
-target_compile_definitions(test-cpp-project PRIVATE CATCH_AMALGAMATED_CUSTOM_MAIN)
+target_compile_definitions(test-cpp-project PRIVATE CATCH_AMALGAMATED_CUSTOM_MAIN DONT_CRASH)
 target_include_directories(test-cpp-project PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test-cpp/include ${CMAKE_CURRENT_BINARY_DIR}/include)
 target_include_directories(test-cpp-project PRIVATE test-cpp/third-party/catch2/include)
 target_include_directories(test-cpp-project PRIVATE test-cpp/third-party/catch2/include/catch2)
