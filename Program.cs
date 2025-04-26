@@ -49,7 +49,7 @@ namespace Obsidian
             }
 
             string generatedFileContent = generator.ProcessAst(compilation);
-            generator.WriteToFile("reflection.hpp", generatedFileContent );
+            generator.WriteToFile("reflection.hpp", generatedFileContent);
         }
 
         private string _searchDirectory = string.Empty;
@@ -105,22 +105,24 @@ namespace Obsidian
             return CppParser.ParseFiles(headerFiles.ToList(), options);
         }
 
-        public string GenerateReflectionInfo(CppEnum e)
+        public string GenerateReflectionInfo(List<string> outHeadersToInclude, CppEnum e)
         {
             string template = File.ReadAllText("enum.template");
-            template = template.Replace("__name_to_replace__", e.Name);
-            template = template.Replace("__full_name_to_replace__", e.FullName);
-            template = template.Replace("__enum_path__", $"\"{e.SourceFile}\"");
+            template = template.Replace("__enum_name__", e.Name);
+            template = template.Replace("__enum_full_name__", e.FullName);
+            outHeadersToInclude.Add(e.SourceFile);
             string enumToNameCases = string.Empty;
+            string nameToEnumCases = string.Empty;
             foreach (CppEnumItem item in e.Items)
             {
                 enumToNameCases += $"\t\t\tcase {e.FullName}::{item.Name}: return \"{item.Name}\";\n";
+                nameToEnumCases += $"\t\tif (strcmp(name, \"{item.Name}\") == 0) return {e.FullName}::{item.Name};\n";
             }
-            template = template.Replace("__insert_name_mapping__", enumToNameCases);
+            template = template.Replace("__enum_value_to_name_switch__", enumToNameCases);
+            template = template.Replace("__enum_name_to_value_switch__", nameToEnumCases);
             if (e.Items.Count > 0)
             {
-                template = template.Replace("__first_entry__", $"{e.FullName}::{e.Items[0].Name}");
-                template = template.Replace("__last_enum__", $"{e.FullName}::{e.Items.Last().Name}");
+                template = template.Replace("__enum_last_entry__", $"{e.FullName}::{e.Items.Last().Name}");
             }
             else
             {
@@ -135,7 +137,7 @@ namespace Obsidian
             File.WriteAllText(fullPath, contents);
         }
 
-        public void AppendEnumReflections(ref string outStr, CppContainerList<CppEnum> enums)
+        public void AppendEnumReflections(ref string outStr, List<string> outHeadersToInclude, CppContainerList<CppEnum> enums)
         {
             foreach (CppEnum e in enums)
             {
@@ -152,7 +154,7 @@ namespace Obsidian
                 {
                     continue;
                 }
-                string generatedCpp = GenerateReflectionInfo(e);
+                string generatedCpp = GenerateReflectionInfo(outHeadersToInclude, e);
                 outStr += generatedCpp;
                 outStr += "\n";
             }
@@ -161,10 +163,12 @@ namespace Obsidian
         public string ProcessAst(CppCompilation compilation)
         {
             string outReflectionContent = File.ReadAllText("reflection-header.template");
+            string enumReflectionContent = string.Empty;
+            List<string> headersToInclude = new List<string>();
 
             // Find all enums, only look for enums in namespaces, not nested in classes
             // TODO: Add support for nested enums
-            AppendEnumReflections(ref outReflectionContent, compilation.Enums);
+            AppendEnumReflections(ref enumReflectionContent, headersToInclude, compilation.Enums);
             Queue<CppNamespace> namespaces = new Queue<CppNamespace>();
             foreach (CppNamespace ns in compilation.Namespaces)
             {
@@ -173,12 +177,20 @@ namespace Obsidian
             while (namespaces.Count() > 0)
             {
                 CppNamespace ns = namespaces.Dequeue();
-                AppendEnumReflections(ref outReflectionContent, ns.Enums);
+                AppendEnumReflections(ref enumReflectionContent, headersToInclude, ns.Enums);
                 foreach (CppNamespace nestedNamespace in ns.Namespaces)
                 {
                     namespaces.Enqueue(nestedNamespace);
                 }
             }
+
+            string headersToIncludeContent = string.Empty;
+            foreach (string headerPath in headersToInclude)
+            {
+                headersToIncludeContent += $"#include \"{headerPath}\"\n";
+            }
+            outReflectionContent = outReflectionContent.Replace("__refl_includes__", headersToIncludeContent);
+            outReflectionContent = outReflectionContent.Replace("__refl_enum__", enumReflectionContent);
 
             return outReflectionContent;
         }

@@ -1,11 +1,19 @@
 ﻿#pragma once
 
+#include <cstring>
+
+__refl_includes__
+
 namespace Obs
 {
+
 template <typename T>
 struct Enum
 {
     static_assert(false, "Enum type does not have reflection data!");
 };
+
+__refl_enum__
+
 } // namespace Obs
 
