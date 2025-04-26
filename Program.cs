@@ -28,6 +28,9 @@ namespace Obsidian
         [Option("include-folders", Required = false, HelpText = "Which folders to use to resolve includes in your header files.")]
         public IEnumerable<string>? IncludeFolders { get; set; } = null;
 
+        [Option("include-system-folders", Separator = ';', Required = false, HelpText = "Which folders to use to resolve system includes in your header files.")]
+        public IEnumerable<string>? IncludeSystemFolders { get; set; } = null;
+
         [Option("cpp-std", Required = false, HelpText = "What C++ standard to use.")]
         public CppStandard CppStandard { get; set; } = CppStandard.Std11;
     }
@@ -55,6 +58,7 @@ namespace Obsidian
         private string _searchDirectory = string.Empty;
         private string _destinationDirectory = string.Empty;
         private IEnumerable<string>? _includeDirectories = null;
+        private IEnumerable<string>? _includeSystemDirectories = null;
         private CppStandard _cppStandard { get; set; }
 
         public Generator(Options options)
@@ -70,6 +74,7 @@ namespace Obsidian
                 Directory.CreateDirectory(_destinationDirectory);
             }
             _includeDirectories = options.IncludeFolders?.ToList();
+            _includeSystemDirectories = options.IncludeSystemFolders?.ToList();
             _cppStandard = options.CppStandard;
         }
 
@@ -101,6 +106,13 @@ namespace Obsidian
             if (_includeDirectories != null)
             {
                 options.IncludeFolders.AddRange(_includeDirectories);
+            }
+            if (_includeSystemDirectories != null && _includeSystemDirectories.Count() > 0)
+            {
+                foreach (string dir in _includeSystemDirectories) {
+                    Console.WriteLine(dir);
+                    }
+                options.SystemIncludeFolders.AddRange(_includeSystemDirectories);
             }
             return CppParser.ParseFiles(headerFiles.ToList(), options);
         }

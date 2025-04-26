@@ -17,6 +17,14 @@ add_library(options INTERFACE)
 setup_compiler_warnings(warnings)
 setup_compiler_options(options)
 
+set(INCLUDE_DIRS ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+
+if (NOT INCLUDE_DIRS)
+    set(INCLUDE_DIRS "")
+else ()
+    set (INCLUDE_DIRS --include-system-folders=${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+endif()
+
 add_custom_target(
         generate_reflection
         COMMAND ${CMAKE_COMMAND} -E echo "Building obsidian..."
@@ -26,6 +34,7 @@ add_custom_target(
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/bin/$<CONFIG>/obsidian --search-path=${CMAKE_CURRENT_SOURCE_DIR}/test-cpp/include
             --destination-path=${CMAKE_CURRENT_BINARY_DIR}/include
             --include-folders=${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR}/include
+            ${INCLUDE_DIRS}
             --cpp-std=Std20
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Generating reflection headers before building test cpp project..."
@@ -42,3 +51,8 @@ target_include_directories(test-cpp-project PRIVATE test-cpp/third-party/catch2/
 
 enable_testing()
 add_test(NAME cpp_test COMMAND test-cpp-project)
+
+get_property(_inc_dirs GLOBAL PROPERTY CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
+foreach(dir IN LISTS _inc_dirs)
+    message(STATUS "Implicit include dir: ${dir}")
+endforeach ()
