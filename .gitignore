@@ -402,3 +402,4 @@ FodyWeavers.xsd
 test-cpp/.idea
 cpp-build/
 Properties/
+.idea
