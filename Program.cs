@@ -126,6 +126,7 @@ namespace Obsidian
             string template = File.ReadAllText("enum.template");
             template = template.Replace("__enum_name__", e.Name);
             template = template.Replace("__enum_full_name__", e.FullName);
+            template = template.Replace("__enum_comment__", e.Comment.ToString());
             outHeadersToInclude.Add(e.SourceFile);
             string enumToNameCases = string.Empty;
             string nameToEnumCases = string.Empty;
@@ -148,6 +149,7 @@ namespace Obsidian
             enumEntriesContent += $"\t\t\t{{\n";
             enumEntriesContent += $"\t\t\t\t.name = \"{e.Name}\",\n";
             enumEntriesContent += $"\t\t\t\t.full_name = \"{e.FullName}\",\n";
+            enumEntriesContent += $"\t\t\t\t.description = \"{e.Comment.ToString()}\",\n";
             enumEntriesContent += $"\t\t\t\t.underlying_type_size = {e.IntegerType.SizeOf},\n";
             enumEntriesContent += $"\t\t\t\t.items = {{\n";
             foreach (CppEnumItem item in e.Items)

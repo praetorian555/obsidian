@@ -30,6 +30,7 @@ struct EnumCollection
     {
         const char* name;
         const char* full_name;
+        const char* description;
         int underlying_type_size;
         std::vector<EnumItem> items;
     };

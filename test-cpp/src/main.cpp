@@ -27,6 +27,8 @@ TEST_CASE("Strong type enum reflection", "[refl][enum]")
         REQUIRE(enum_name == "Fruit");
         std::string full_enum_name = Obs::Enum<Fruit>::GetFullEnumName();
         REQUIRE(full_enum_name == "FirstNamespace::SecondNamespace::Fruit");
+        std::string description = Obs::Enum<Fruit>::GetDescription();
+        REQUIRE(description == "This is a fruit enum.");
 
         REQUIRE(Obs::Enum<Fruit>::GetUnderlyingValue(Obs::Enum<Fruit>::k_end) == 8);
 
@@ -52,6 +54,8 @@ TEST_CASE("Strong type enum reflection", "[refl][enum]")
         REQUIRE(enum_name == "Vegetable");
         std::string full_enum_name = Obs::Enum<FirstNamespace::Vegetable>::GetFullEnumName();
         REQUIRE(full_enum_name == "FirstNamespace::Vegetable");
+        std::string description = Obs::Enum<FirstNamespace::Vegetable>::GetDescription();
+        REQUIRE(description == "This is vegetable enum.");
 
         REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetUnderlyingValue(Obs::Enum<FirstNamespace::Vegetable>::k_end) == -7);
 
@@ -81,10 +85,12 @@ TEST_CASE("Enum collection", "[refl][enum]")
         REQUIRE(collection.entries.size() == 2);
         REQUIRE(strcmp(collection.entries[0].name, "Vegetable") == 0);
         REQUIRE(strcmp(collection.entries[0].full_name, "FirstNamespace::Vegetable") == 0);
+        REQUIRE(strcmp(collection.entries[0].description, "This is vegetable enum.") == 0);
         REQUIRE(collection.entries[0].underlying_type_size == 1);
         REQUIRE(collection.entries[0].items.size() == 3);
         REQUIRE(strcmp(collection.entries[1].name, "Fruit") == 0);
         REQUIRE(strcmp(collection.entries[1].full_name, "FirstNamespace::SecondNamespace::Fruit") == 0);
+        REQUIRE(strcmp(collection.entries[1].description, "This is a fruit enum.") == 0);
         REQUIRE(collection.entries[1].underlying_type_size == sizeof(int));
         REQUIRE(collection.entries[1].items.size() == 3);
     }

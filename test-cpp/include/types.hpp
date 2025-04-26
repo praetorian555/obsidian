@@ -9,6 +9,7 @@
 namespace FirstNamespace
 {
 
+// This is vegetable enum.
 enum class [[obs::refl]] Vegetable : int8_t
 {
     Carrot = -10,
@@ -18,6 +19,9 @@ enum class [[obs::refl]] Vegetable : int8_t
 
 namespace SecondNamespace
 {
+/**
+ * This is a fruit enum.
+ */
 enum class [[obs::refl]] Fruit
 {
     Apple = 5,
