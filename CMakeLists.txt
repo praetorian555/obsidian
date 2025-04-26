@@ -51,8 +51,3 @@ target_include_directories(test-cpp-project PRIVATE test-cpp/third-party/catch2/
 
 enable_testing()
 add_test(NAME cpp_test COMMAND test-cpp-project)
-
-get_property(_inc_dirs GLOBAL PROPERTY CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
-foreach(dir IN LISTS _inc_dirs)
-    message(STATUS "Implicit include dir: ${dir}")
-endforeach ()
