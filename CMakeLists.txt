@@ -35,7 +35,6 @@ add_custom_target(
             --destination-path=${CMAKE_CURRENT_BINARY_DIR}/include
             --include-folders=${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR}/include
             ${INCLUDE_DIRS}
-            --cpp-std=Std20
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Generating reflection headers before building test cpp project..."
         VERBATIM

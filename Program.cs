@@ -11,9 +11,6 @@ namespace Obsidian
 {
     public enum CppStandard
     {
-        Std11,
-        Std14,
-        Std17,
         Std20
     };
 
@@ -32,7 +29,7 @@ namespace Obsidian
         public IEnumerable<string>? IncludeSystemFolders { get; set; } = null;
 
         [Option("cpp-std", Required = false, HelpText = "What C++ standard to use.")]
-        public CppStandard CppStandard { get; set; } = CppStandard.Std11;
+        public CppStandard CppStandard { get; set; } = CppStandard.Std20;
     }
 
     public class Generator
