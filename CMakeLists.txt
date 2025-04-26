@@ -17,14 +17,13 @@ add_library(options INTERFACE)
 setup_compiler_warnings(warnings)
 setup_compiler_options(options)
 
-set(PLATFORM_NAME $<$<PLATFORM_ID:Linux>:linux-x64>$<$<PLATFORM_ID:Windows>:win-x64>)
 add_custom_target(
         generate_reflection
         COMMAND ${CMAKE_COMMAND} -E echo "Building obsidian..."
         COMMAND dotnet restore
-        COMMAND dotnet build obsidian.sln --no-restore /p:Configuration=$<CONFIG>
+        COMMAND dotnet build obsidian.csproj --no-restore /p:Configuration=$<CONFIG> -o ${CMAKE_CURRENT_SOURCE_DIR}/bin/$<CONFIG>
         COMMAND ${CMAKE_COMMAND} -E echo "Running obsidian..."
-        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/bin/$<CONFIG>/net8.0/${PLATFORM_NAME}/obsidian --search-path=${CMAKE_CURRENT_SOURCE_DIR}/test-cpp/include
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/bin/$<CONFIG>/obsidian --search-path=${CMAKE_CURRENT_SOURCE_DIR}/test-cpp/include
             --destination-path=${CMAKE_CURRENT_BINARY_DIR}/include
             --include-folders=${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR}/include
             --cpp-std=Std20
