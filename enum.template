@@ -9,6 +9,15 @@ struct Enum<__enum_full_name__>
     static const char* GetEnumName() { return "__enum_name__"; }
     static const char* GetDescription() { return "__enum_comment__"; }
 
+    static const char* GetValueDescription(EnumType enum_value)
+    {
+        switch (enum_value)
+        {
+__enum_value_to_description_switch__
+            default: return nullptr;
+        }
+    }
+
     static UnderlyingType GetUnderlyingValue(EnumType enum_value)
     {
         return static_cast<UnderlyingType>(enum_value);

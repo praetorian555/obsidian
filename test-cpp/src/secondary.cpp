@@ -44,7 +44,7 @@ TEST_CASE("Enum to name secondary", "[refl][enum]")
         std::string full_enum_name = Obs::Enum<FirstNamespace::Vegetable>::GetFullEnumName();
         REQUIRE(full_enum_name == "FirstNamespace::Vegetable");
         std::string description = Obs::Enum<FirstNamespace::Vegetable>::GetDescription();
-        REQUIRE(description == "This is vegetable enum.");
+        REQUIRE(description == "This is a vegetable enum.");
 
         REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetUnderlyingValue(Obs::Enum<FirstNamespace::Vegetable>::k_end) == -7);
 

@@ -121,6 +121,14 @@ namespace Obsidian
             return CppParser.ParseFiles(headerFiles.ToList(), options);
         }
 
+        private static string GetDescription(CppEnumItem? prevItem, CppEnumItem item)
+        {
+            if (item.Comment == null) return "";
+            if (prevItem == null || prevItem.Comment == null) return item.Comment.ToString();
+            if (prevItem.Comment.ToString() == item.Comment.ToString()) return "";
+            return item.Comment.ToString();
+        }
+
         public string GenerateReflectionInfo(ref string enumEntriesContent, List<string> outHeadersToInclude, CppEnum e)
         {
             string template = File.ReadAllText("enum.template");
@@ -130,13 +138,19 @@ namespace Obsidian
             outHeadersToInclude.Add(e.SourceFile);
             string enumToNameCases = string.Empty;
             string nameToEnumCases = string.Empty;
+            string enumToDescCases = string.Empty;
+            CppEnumItem? prevItem = null;
             foreach (CppEnumItem item in e.Items)
             {
                 enumToNameCases += $"\t\t\tcase {e.FullName}::{item.Name}: return \"{item.Name}\";\n";
                 nameToEnumCases += $"\t\tif (strcmp(name, \"{item.Name}\") == 0) return {e.FullName}::{item.Name};\n";
+                string itemDesc = GetDescription(prevItem, item);
+                prevItem = item;
+                enumToDescCases += $"\t\t\tcase {e.FullName}::{item.Name}: return \"{itemDesc}\";\n";
             }
             template = template.Replace("__enum_value_to_name_switch__", enumToNameCases);
             template = template.Replace("__enum_name_to_value_switch__", nameToEnumCases);
+            template = template.Replace("__enum_value_to_description_switch__", enumToDescCases);
             if (e.Items.Count > 0)
             {
                 template = template.Replace("__enum_last_entry__", $"{e.FullName}::{e.Items.Last().Name}");
@@ -149,13 +163,18 @@ namespace Obsidian
             enumEntriesContent += $"\t\t\t{{\n";
             enumEntriesContent += $"\t\t\t\t.name = \"{e.Name}\",\n";
             enumEntriesContent += $"\t\t\t\t.full_name = \"{e.FullName}\",\n";
-            enumEntriesContent += $"\t\t\t\t.description = \"{e.Comment.ToString()}\",\n";
+            string enumDesc = e.Comment != null ? e.Comment.ToString() : string.Empty;
+            enumEntriesContent += $"\t\t\t\t.description = \"{enumDesc}\",\n";
             enumEntriesContent += $"\t\t\t\t.underlying_type_size = {e.IntegerType.SizeOf},\n";
             enumEntriesContent += $"\t\t\t\t.items = {{\n";
+            prevItem = null;
             foreach (CppEnumItem item in e.Items)
             {
                 enumEntriesContent += $"\t\t\t\t\t{{\n";
                 enumEntriesContent += $"\t\t\t\t\t\t.name = \"{item.Name}\",\n";
+                string itemDesc = GetDescription(prevItem, item);
+                prevItem = item;
+                enumEntriesContent += $"\t\t\t\t\t\t.description = \"{itemDesc}\",\n";
                 enumEntriesContent += $"\t\t\t\t\t\t.value = static_cast<uint64_t>({item.Value})\n";
                 enumEntriesContent += $"\t\t\t\t\t}},\n";
             }

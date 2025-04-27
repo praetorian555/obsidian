@@ -23,6 +23,7 @@ struct EnumCollection
     struct EnumItem
     {
         const char* name = "";
+        const char* description = "";
         uint64_t value = 0xFFFFFFFFFFFFFFFF;
     };
 

@@ -36,6 +36,10 @@ TEST_CASE("Strong type enum reflection", "[refl][enum]")
         REQUIRE(strcmp(Obs::Enum<Fruit>::GetValueName(Fruit::Orange), "Orange") == 0);
         REQUIRE(strcmp(Obs::Enum<Fruit>::GetValueName(Fruit::Banana), "Banana") == 0);
 
+        REQUIRE(strcmp(Obs::Enum<Fruit>::GetValueDescription(Fruit::Apple), "") == 0);
+        REQUIRE(strcmp(Obs::Enum<Fruit>::GetValueDescription(Fruit::Orange), "This is orange.") == 0);
+        REQUIRE(strcmp(Obs::Enum<Fruit>::GetValueDescription(Fruit::Banana), "") == 0);
+
         REQUIRE(Obs::Enum<Fruit>::GetValue("Apple") == Fruit::Apple);
         REQUIRE(Obs::Enum<Fruit>::GetValue("Orange") == Fruit::Orange);
         REQUIRE(Obs::Enum<Fruit>::GetValue("Banana") == Fruit::Banana);
@@ -55,13 +59,17 @@ TEST_CASE("Strong type enum reflection", "[refl][enum]")
         std::string full_enum_name = Obs::Enum<FirstNamespace::Vegetable>::GetFullEnumName();
         REQUIRE(full_enum_name == "FirstNamespace::Vegetable");
         std::string description = Obs::Enum<FirstNamespace::Vegetable>::GetDescription();
-        REQUIRE(description == "This is vegetable enum.");
+        REQUIRE(description == "This is a vegetable enum.");
 
         REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetUnderlyingValue(Obs::Enum<FirstNamespace::Vegetable>::k_end) == -7);
 
         REQUIRE(strcmp(Obs::Enum<FirstNamespace::Vegetable>::GetValueName(FirstNamespace::Vegetable::Carrot), "Carrot") == 0);
         REQUIRE(strcmp(Obs::Enum<FirstNamespace::Vegetable>::GetValueName(FirstNamespace::Vegetable::Potato), "Potato") == 0);
         REQUIRE(strcmp(Obs::Enum<FirstNamespace::Vegetable>::GetValueName(FirstNamespace::Vegetable::Cucumber), "Cucumber") == 0);
+
+        REQUIRE(strcmp(Obs::Enum<FirstNamespace::Vegetable>::GetValueDescription(FirstNamespace::Vegetable::Carrot), "This is carrot.") == 0);
+        REQUIRE(strcmp(Obs::Enum<FirstNamespace::Vegetable>::GetValueDescription(FirstNamespace::Vegetable::Potato), "") == 0);
+        REQUIRE(strcmp(Obs::Enum<FirstNamespace::Vegetable>::GetValueDescription(FirstNamespace::Vegetable::Cucumber), "This is cucumber.") == 0);
 
         REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetValue("Carrot") == FirstNamespace::Vegetable::Carrot);
         REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetValue("Potato") == FirstNamespace::Vegetable::Potato);
@@ -104,8 +112,10 @@ TEST_CASE("Enum collection", "[refl][enum]")
         REQUIRE(static_cast<int8_t>(collection.entries[0].items[2].value) == -8);
 
         REQUIRE(strcmp(collection.entries[1].items[0].name, "Apple") == 0);
+        REQUIRE(strcmp(collection.entries[1].items[0].description, "") == 0);
         REQUIRE(static_cast<int>(collection.entries[1].items[0].value) == 5);
         REQUIRE(strcmp(collection.entries[1].items[1].name, "Orange") == 0);
+        REQUIRE(strcmp(collection.entries[1].items[1].description, "This is orange.") == 0);
         REQUIRE(static_cast<int>(collection.entries[1].items[1].value) == 6);
         REQUIRE(strcmp(collection.entries[1].items[2].name, "Banana") == 0);
         REQUIRE(static_cast<int>(collection.entries[1].items[2].value) == 7);
