@@ -9,7 +9,7 @@
 namespace FirstNamespace
 {
 
-// This is vegetable enum.
+// This is a vegetable enum.
 enum class [[obs::refl]] Vegetable : int8_t
 {
     Carrot = -10,

@@ -85,7 +85,7 @@ TEST_CASE("Enum collection", "[refl][enum]")
         REQUIRE(collection.entries.size() == 2);
         REQUIRE(strcmp(collection.entries[0].name, "Vegetable") == 0);
         REQUIRE(strcmp(collection.entries[0].full_name, "FirstNamespace::Vegetable") == 0);
-        REQUIRE(strcmp(collection.entries[0].description, "This is vegetable enum.") == 0);
+        REQUIRE(strcmp(collection.entries[0].description, "This is a vegetable enum.") == 0);
         REQUIRE(collection.entries[0].underlying_type_size == 1);
         REQUIRE(collection.entries[0].items.size() == 3);
         REQUIRE(strcmp(collection.entries[1].name, "Fruit") == 0);
