@@ -32,5 +32,16 @@ enum class [[obs::refl]] Fruit
 
     Banana
 };
+
+struct DataStruct
+{
+    enum class [[obs::refl]] DataType : int16_t
+    {
+        A,
+        B,
+        C
+    };
+};
+
 } // SecondNamespace
 } // FirstNamespace

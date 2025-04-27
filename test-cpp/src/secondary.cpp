@@ -71,7 +71,7 @@ TEST_CASE("Enum collection secondary", "[refl][enum]")
     Obs::EnumCollection& collection = Obs::EnumCollection::Get();
     SECTION("Collection info")
     {
-        REQUIRE(collection.entries.size() == 2);
+        REQUIRE(collection.entries.size() == 3);
         REQUIRE(strcmp(collection.entries[0].name, "Vegetable") == 0);
         REQUIRE(strcmp(collection.entries[0].full_name, "FirstNamespace::Vegetable") == 0);
         REQUIRE(strcmp(collection.entries[0].description, "This is a vegetable enum.") == 0);
@@ -82,6 +82,11 @@ TEST_CASE("Enum collection secondary", "[refl][enum]")
         REQUIRE(strcmp(collection.entries[1].description, "This is a fruit enum.") == 0);
         REQUIRE(collection.entries[1].underlying_type_size == sizeof(int));
         REQUIRE(collection.entries[1].items.size() == 3);
+        REQUIRE(strcmp(collection.entries[2].name, "DataType") == 0);
+        REQUIRE(strcmp(collection.entries[2].full_name, "FirstNamespace::SecondNamespace::DataStruct::DataType") == 0);
+        REQUIRE(strcmp(collection.entries[2].description, "") == 0);
+        REQUIRE(collection.entries[2].underlying_type_size == 2);
+        REQUIRE(collection.entries[2].items.size() == 3);
     }
     SECTION("Collection items")
     {

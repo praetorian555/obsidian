@@ -134,7 +134,8 @@ namespace Obsidian
             string template = File.ReadAllText("enum.template");
             template = template.Replace("__enum_name__", e.Name);
             template = template.Replace("__enum_full_name__", e.FullName);
-            template = template.Replace("__enum_comment__", e.Comment.ToString());
+            string enumDesc = e.Comment != null ? e.Comment.ToString() : string.Empty;
+            template = template.Replace("__enum_comment__", enumDesc);
             outHeadersToInclude.Add(e.SourceFile);
             string enumToNameCases = string.Empty;
             string nameToEnumCases = string.Empty;
@@ -163,7 +164,6 @@ namespace Obsidian
             enumEntriesContent += $"\t\t\t{{\n";
             enumEntriesContent += $"\t\t\t\t.name = \"{e.Name}\",\n";
             enumEntriesContent += $"\t\t\t\t.full_name = \"{e.FullName}\",\n";
-            string enumDesc = e.Comment != null ? e.Comment.ToString() : string.Empty;
             enumEntriesContent += $"\t\t\t\t.description = \"{enumDesc}\",\n";
             enumEntriesContent += $"\t\t\t\t.underlying_type_size = {e.IntegerType.SizeOf},\n";
             enumEntriesContent += $"\t\t\t\t.items = {{\n";
@@ -220,8 +220,6 @@ namespace Obsidian
             string enumEntriesContent = string.Empty;
             List<string> headersToInclude = new List<string>();
 
-            // Find all enums, only look for enums in namespaces, not nested in classes
-            // TODO: Add support for nested enums
             AppendEnumReflections(ref enumReflectionContent, ref enumEntriesContent, headersToInclude, compilation.Enums);
             Queue<CppNamespace> namespaces = new Queue<CppNamespace>();
             foreach (CppNamespace ns in compilation.Namespaces)
@@ -231,7 +229,24 @@ namespace Obsidian
             while (namespaces.Count() > 0)
             {
                 CppNamespace ns = namespaces.Dequeue();
+
                 AppendEnumReflections(ref enumReflectionContent, ref enumEntriesContent, headersToInclude, ns.Enums);
+
+                // Check through all the classes and their nested enums.
+                Queue<CppClass> classes = new Queue<CppClass>();
+                foreach (CppClass c in ns.Classes)
+                {
+                    classes.Enqueue(c);
+                }
+                while (classes.Count() > 0)
+                {
+                    CppClass c = classes.Dequeue();
+                    AppendEnumReflections(ref enumReflectionContent, ref enumEntriesContent, headersToInclude, c.Enums);
+                    foreach (CppClass c2 in c.Classes)
+                    {
+                        classes.Enqueue(c2);
+                    }
+                }
                 foreach (CppNamespace nestedNamespace in ns.Namespaces)
                 {
                     namespaces.Enqueue(nestedNamespace);

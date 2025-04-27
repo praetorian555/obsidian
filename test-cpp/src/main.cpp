@@ -83,6 +83,41 @@ TEST_CASE("Strong type enum reflection", "[refl][enum]")
         REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetUnderlyingValue(FirstNamespace::Vegetable::Potato) == -9);
         REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetUnderlyingValue(FirstNamespace::Vegetable::Cucumber) == -8);
     }
+        SECTION("DataType") // Added section for DataType
+    {
+        using DataTypeEnum = FirstNamespace::SecondNamespace::DataStruct::DataType; // Alias for brevity
+        std::string enum_name = Obs::Enum<DataTypeEnum>::GetEnumName();
+        REQUIRE(enum_name == "DataType");
+        std::string full_enum_name = Obs::Enum<DataTypeEnum>::GetFullEnumName();
+        REQUIRE(full_enum_name == "FirstNamespace::SecondNamespace::DataStruct::DataType");
+        std::string description = Obs::Enum<DataTypeEnum>::GetDescription();
+        REQUIRE(description == ""); // No description provided
+
+        REQUIRE(Obs::Enum<DataTypeEnum>::GetUnderlyingValue(Obs::Enum<DataTypeEnum>::k_end) == 3); // Default enum values end at C=2, so k_end is 3
+
+        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetValueName(DataTypeEnum::A), "A") == 0);
+        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetValueName(DataTypeEnum::B), "B") == 0);
+        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetValueName(DataTypeEnum::C), "C") == 0);
+
+        // Assuming no descriptions for individual values
+        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetValueDescription(DataTypeEnum::A), "") == 0);
+        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetValueDescription(DataTypeEnum::B), "") == 0);
+        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetValueDescription(DataTypeEnum::C), "") == 0);
+
+        REQUIRE(Obs::Enum<DataTypeEnum>::GetValue("A") == DataTypeEnum::A);
+        REQUIRE(Obs::Enum<DataTypeEnum>::GetValue("B") == DataTypeEnum::B);
+        REQUIRE(Obs::Enum<DataTypeEnum>::GetValue("C") == DataTypeEnum::C);
+
+        // Default underlying values: A=0, B=1, C=2
+        REQUIRE(Obs::Enum<DataTypeEnum>::GetValue(0) == DataTypeEnum::A);
+        REQUIRE(Obs::Enum<DataTypeEnum>::GetValue(1) == DataTypeEnum::B);
+        REQUIRE(Obs::Enum<DataTypeEnum>::GetValue(2) == DataTypeEnum::C);
+
+        REQUIRE(Obs::Enum<DataTypeEnum>::GetUnderlyingValue(DataTypeEnum::A) == 0);
+        REQUIRE(Obs::Enum<DataTypeEnum>::GetUnderlyingValue(DataTypeEnum::B) == 1);
+        REQUIRE(Obs::Enum<DataTypeEnum>::GetUnderlyingValue(DataTypeEnum::C) == 2);
+    }
+
 }
 
 TEST_CASE("Enum collection", "[refl][enum]")
@@ -90,7 +125,7 @@ TEST_CASE("Enum collection", "[refl][enum]")
     Obs::EnumCollection& collection = Obs::EnumCollection::Get();
     SECTION("Collection info")
     {
-        REQUIRE(collection.entries.size() == 2);
+        REQUIRE(collection.entries.size() == 3);
         REQUIRE(strcmp(collection.entries[0].name, "Vegetable") == 0);
         REQUIRE(strcmp(collection.entries[0].full_name, "FirstNamespace::Vegetable") == 0);
         REQUIRE(strcmp(collection.entries[0].description, "This is a vegetable enum.") == 0);
@@ -101,6 +136,11 @@ TEST_CASE("Enum collection", "[refl][enum]")
         REQUIRE(strcmp(collection.entries[1].description, "This is a fruit enum.") == 0);
         REQUIRE(collection.entries[1].underlying_type_size == sizeof(int));
         REQUIRE(collection.entries[1].items.size() == 3);
+        REQUIRE(strcmp(collection.entries[2].name, "DataType") == 0);
+        REQUIRE(strcmp(collection.entries[2].full_name, "FirstNamespace::SecondNamespace::DataStruct::DataType") == 0);
+        REQUIRE(strcmp(collection.entries[2].description, "") == 0);
+        REQUIRE(collection.entries[2].underlying_type_size == 2);
+        REQUIRE(collection.entries[2].items.size() == 3);
     }
     SECTION("Collection items")
     {
