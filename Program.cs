@@ -3,6 +3,7 @@ using CommandLine;
 using CppAst;
 using Obsidian;
 using System.Reflection.Emit;
+using System.Text.RegularExpressions;
 
 ParserResult<Options> parserResult = Parser.Default.ParseArguments<Options>(args);
 parserResult.WithParsed(Generator.RunProgram);
@@ -301,8 +302,9 @@ namespace Obsidian
                 }
             }
 
+            string[] uniqueIncludes = headersToInclude.Select(NormalizePath).Distinct().ToArray();
             string headersToIncludeContent = string.Empty;
-            foreach (string headerPath in headersToInclude)
+            foreach (string headerPath in uniqueIncludes)
             {
                 headersToIncludeContent += $"#include \"{headerPath}\"\n";
             }
@@ -312,6 +314,15 @@ namespace Obsidian
             outReflectionContent = outReflectionContent.Replace("__refl_class__", classReflectionContent);
 
             return outReflectionContent;
+        }
+
+        private static string NormalizePath(string path)
+        {
+            // 1) Switch all backslashes to forward slashes
+            string p = path.Replace("\\", "/");
+            // 2) Collapse any run of multiple slashes into a single slash
+            p = Regex.Replace(p, "/{2,}", "/");
+            return p;
         }
 
     }
