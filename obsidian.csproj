@@ -13,6 +13,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="class.template">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="reflection-header.template">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

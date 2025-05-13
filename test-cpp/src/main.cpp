@@ -179,3 +179,72 @@ TEST_CASE("Enum collection", "[refl][enum]")
         REQUIRE(entry.items.size() == 3);
     }
 }
+
+TEST_CASE("Struct reflection", "[refl][struct]")
+{
+    SECTION("Check name, scope and description")
+    {
+        REQUIRE(strcmp(Obs::Class<DataStruct>::GetName(), "DataStruct") == 0);
+        REQUIRE(strcmp(Obs::Class<DataStruct>::GetScope(), "FirstNamespace::SecondNamespace") == 0);
+        REQUIRE(strcmp(Obs::Class<DataStruct>::GetScopedName(), "FirstNamespace::SecondNamespace::DataStruct") == 0);
+        REQUIRE(strcmp(Obs::Class<DataStruct>::GetDescription(), "This is a test struct.") == 0);
+    }
+    SECTION("Check properties")
+    {
+        const Obs::Property& first_prop = *Obs::Class<DataStruct>::Get().begin();
+        REQUIRE(strcmp(first_prop.name, "a") == 0);
+        REQUIRE(strcmp(first_prop.type_name, "int") == 0);
+        REQUIRE(first_prop.offset == offsetof(DataStruct, a));
+        REQUIRE(first_prop.size == sizeof(int));
+
+        const Obs::Property& second_prop = *(Obs::Class<DataStruct>::Get().begin() + 1);
+        REQUIRE(strcmp(second_prop.name, "b") == 0);
+        REQUIRE(strcmp(second_prop.type_name, "float") == 0);
+        REQUIRE(second_prop.offset == offsetof(DataStruct, b));
+        REQUIRE(second_prop.size == sizeof(float));
+
+        const Obs::Property& third_prop = *(Obs::Class<DataStruct>::Get().begin() + 2);
+        REQUIRE(strcmp(third_prop.name, "c") == 0);
+        REQUIRE(strcmp(third_prop.type_name, "char const *") == 0);
+        REQUIRE(third_prop.offset == offsetof(DataStruct, c));
+        REQUIRE(third_prop.size == sizeof(char const *));
+    }
+    SECTION("Read property values")
+    {
+        DataStruct data;
+        data.a = 1;
+        data.b = 2.0f;
+        data.c = "Hello world!";
+
+        int a_val = 0;
+        float b_val = 0.0f;
+        char const* c_val = nullptr;
+
+        Obs::Class<DataStruct>::Read(&a_val, &data, "a");
+        Obs::Class<DataStruct>::Read(&b_val, &data, "b");
+        Obs::Class<DataStruct>::Read(&c_val, &data, "c");
+
+        REQUIRE(a_val == 1);
+        REQUIRE(b_val == 2.0f);
+        REQUIRE(strcmp(c_val, "Hello world!") == 0);
+    }
+    SECTION("Write property values")
+    {
+        DataStruct data;
+        data.a = 1;
+        data.b = 2.0f;
+        data.c = "Hello world!";
+
+        int a_val = 0;
+        float b_val = 0.0f;
+        char const* c_val = nullptr;
+
+        Obs::Class<DataStruct>::Write(&a_val, &data, "a");
+        Obs::Class<DataStruct>::Write(&b_val, &data, "b");
+        Obs::Class<DataStruct>::Write(&c_val, &data, "c");
+
+        REQUIRE(data.a == 0);
+        REQUIRE(data.b == 0.0f);
+        REQUIRE(data.c == nullptr);
+    }
+}

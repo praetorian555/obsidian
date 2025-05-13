@@ -184,6 +184,46 @@ namespace Obsidian
             return template;
         }
 
+        public string GenerateReflectionInfo(ref string classEntriesContent, List<string> outHeadersToInclude, CppClass c)
+        {
+            outHeadersToInclude.Add(c.SourceFile);
+            string template = File.ReadAllText("class.template");
+            template = template.Replace("__class_name__", c.Name);
+            template = template.Replace("__class_scope__", c.FullParentName);
+            template = template.Replace("__class_scoped_name__", c.FullName);
+            template = template.Replace("__class_description__", c.Comment != null ? c.Comment.ToString() : "");
+
+            string initProperties = "\n\t\t\t{\n";
+            foreach (CppField f in c.Fields)
+            {
+                if (!HasReflAttribute(f.TokenAttributes)) continue;
+                initProperties += "\t\t\t\t{\n";
+                initProperties += $"\t\t\t\t\t.name = \"{f.Name}\",\n";
+                initProperties += $"\t\t\t\t\t.type_name = \"{f.Type.FullName}\",\n";
+                // TODO: Figure out type enum
+                initProperties += $"\t\t\t\t\t.offset = offsetof({c.FullName}, {f.Name}),\n";
+                initProperties += $"\t\t\t\t\t.size = sizeof({c.FullName}::{f.Name})\n";
+                initProperties += "\t\t\t\t},\n";
+
+            }
+            initProperties += "\t\t\t}";
+            template = template.Replace("__class_init_properties__", initProperties);
+
+            return template;
+        }
+
+        private bool HasReflAttribute(List<CppAttribute> attributes)
+        {
+            foreach (CppAttribute attribute in attributes)
+            {
+                if (attribute.Name == "refl")
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public void WriteToFile(string fileName, string contents)
         {
             string fullPath = Path.Combine(_options.DestinationDirectory, fileName);
@@ -194,20 +234,25 @@ namespace Obsidian
         {
             foreach (CppEnum e in enums)
             {
-                bool needsReflection = false;
-                foreach (CppAttribute attribute in e.TokenAttributes)
-                {
-                    if (attribute.Name == "refl")
-                    {
-                        needsReflection = true;
-                        break;
-                    }
-                }
-                if (!needsReflection)
+                if (!HasReflAttribute(e.TokenAttributes))
                 {
                     continue;
                 }
                 string generatedCpp = GenerateReflectionInfo(ref enumEntriesContent, outHeadersToInclude, e);
+                outStr += generatedCpp;
+                outStr += "\n";
+            }
+        }
+
+        public void AppendClassReflections(ref string outStr, ref string classEntriesContent, List<string> outHeadersToInclude, CppContainerList<CppClass> classes)
+        {
+            foreach (CppClass c in classes)
+            {
+                if (!HasReflAttribute(c.TokenAttributes))
+                {
+                    continue;
+                }
+                string generatedCpp = GenerateReflectionInfo(ref classEntriesContent, outHeadersToInclude, c);
                 outStr += generatedCpp;
                 outStr += "\n";
             }
@@ -218,6 +263,8 @@ namespace Obsidian
             string outReflectionContent = File.ReadAllText("reflection-header.template");
             string enumReflectionContent = string.Empty;
             string enumEntriesContent = string.Empty;
+            string classReflectionContent = string.Empty;
+            string classEntriesContent = string.Empty;
             List<string> headersToInclude = new List<string>();
 
             AppendEnumReflections(ref enumReflectionContent, ref enumEntriesContent, headersToInclude, compilation.Enums);
@@ -231,6 +278,7 @@ namespace Obsidian
                 CppNamespace ns = namespaces.Dequeue();
 
                 AppendEnumReflections(ref enumReflectionContent, ref enumEntriesContent, headersToInclude, ns.Enums);
+                AppendClassReflections(ref classReflectionContent, ref classEntriesContent, headersToInclude, ns.Classes);
 
                 // Check through all the classes and their nested enums.
                 Queue<CppClass> classes = new Queue<CppClass>();
@@ -261,6 +309,7 @@ namespace Obsidian
             outReflectionContent = outReflectionContent.Replace("__refl_enum_collection_entries__", enumEntriesContent);
             outReflectionContent = outReflectionContent.Replace("__refl_includes__", headersToIncludeContent);
             outReflectionContent = outReflectionContent.Replace("__refl_enum__", enumReflectionContent);
+            outReflectionContent = outReflectionContent.Replace("__refl_class__", classReflectionContent);
 
             return outReflectionContent;
         }

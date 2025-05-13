@@ -1,0 +1,63 @@
+﻿template <>
+struct Class<__class_scoped_name__>
+{
+	static const char* GetName() { return "__class_name__"; }
+	static const char* GetScope() { return "__class_scope__"; }
+	static const char* GetScopedName() { return "__class_scoped_name__"; }
+	static const char* GetDescription() { return "__class_description__"; }
+
+	static Class& Get()
+	{
+		static Class s_instance;
+		return s_instance;
+	}
+
+	struct ConstIterator
+	{
+		ConstIterator(const Class* cls, int position) : m_class(cls), m_pos(position) {}
+		bool operator==(const ConstIterator& other) const { return m_class == other.m_class && m_pos == other.m_pos; }
+		const Property& operator*() const { return m_class->m_properties[m_pos]; }
+        const Property* operator->() const { return &m_class->m_properties[m_pos]; } 
+        ConstIterator operator++(int) { ConstIterator tmp = *this; m_pos++; return tmp; }
+        ConstIterator& operator++() { m_pos++; return *this; }
+
+        ConstIterator operator+(int n) const { return ConstIterator(m_class, m_pos + n); }
+        ConstIterator operator-(int n) const { return ConstIterator(m_class, m_pos - n); }
+
+	private:
+		const Class* m_class;
+		int m_pos;
+	};
+
+    ConstIterator begin() const { return ConstIterator(this, 0); }
+    ConstIterator end() const { return ConstIterator(this, this->m_properties.size()); }
+
+	static bool Read(void* out_value, void* object, const char* property_name)
+    {
+        for (auto& prop : Get())
+        {
+            if (strcmp(prop.name, property_name) == 0)
+            {
+                memcpy(out_value, (char*)object + prop.offset, prop.size);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static bool Write(void* value, void* object, const char* property_name)
+    {
+        for (auto& prop : Get())
+        {
+            if (strcmp(prop.name, property_name) == 0)
+            {
+                memcpy((char*)object + prop.offset, value, prop.size);
+                return true;
+            }
+        }
+        return false;
+    }
+
+private:
+	std::vector<Property> m_properties = __class_init_properties__;
+};

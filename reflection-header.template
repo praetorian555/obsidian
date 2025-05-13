@@ -91,5 +91,37 @@ private:
     }
 };
 
+enum class Type
+{
+    int8,
+    int16,
+    int32,
+    int64,
+    uint8,
+    uint16,
+    uint32,
+    uint64,
+    float32,
+    float64,
+    enum_type
+};
+
+struct Property
+{
+    const char* name;
+    const char* type_name;
+    Type type_enum;
+    int offset;
+    int size;
+};
+
+template <typename T>
+struct Class
+{
+    static_assert(false, "Class type does not have reflection data!");
+};
+
+__refl_class__
+
 } // namespace Obs
 

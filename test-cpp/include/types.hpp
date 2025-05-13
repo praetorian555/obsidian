@@ -33,7 +33,10 @@ enum class [[obs::refl]] Fruit
     Banana
 };
 
-struct DataStruct
+/**
+ * This is a test struct.
+ */
+struct [[obs::refl]] DataStruct
 {
     enum class [[obs::refl]] DataType : int16_t
     {
@@ -41,6 +44,10 @@ struct DataStruct
         B,
         C
     };
+
+    [[obs::refl]] int32_t a = 1;
+    [[obs::refl]] float b = 5.0f;
+    [[obs::refl]] const char * c = "this is test";
 };
 
 } // SecondNamespace
