@@ -185,6 +185,19 @@ namespace Obsidian
             return template;
         }
 
+        private string GetTypeEnum(CppType type)
+        {
+            if (type.FullName == "std::basic_string<char, std::char_traits<char>, std::allocator<char>>")
+            {
+                return "String";
+            }
+            if (type.FullName.EndsWith("*"))
+            {
+                return "Pointer";
+            }
+            return "POD";
+        }
+
         public string GenerateReflectionInfo(ref string classEntriesContent, List<string> outHeadersToInclude, CppClass c)
         {
             outHeadersToInclude.Add(c.SourceFile);
@@ -194,20 +207,20 @@ namespace Obsidian
             template = template.Replace("__class_scoped_name__", c.FullName);
             template = template.Replace("__class_description__", c.Comment != null ? c.Comment.ToString() : "");
 
-            string initProperties = "\n\t\t\t{\n";
+            string initProperties = "\n\t\t{\n";
             foreach (CppField f in c.Fields)
             {
                 if (!HasReflAttribute(f.TokenAttributes)) continue;
-                initProperties += "\t\t\t\t{\n";
-                initProperties += $"\t\t\t\t\t.name = \"{f.Name}\",\n";
-                initProperties += $"\t\t\t\t\t.type_name = \"{f.Type.FullName}\",\n";
-                // TODO: Figure out type enum
-                initProperties += $"\t\t\t\t\t.offset = offsetof({c.FullName}, {f.Name}),\n";
-                initProperties += $"\t\t\t\t\t.size = sizeof({c.FullName}::{f.Name})\n";
-                initProperties += "\t\t\t\t},\n";
+                initProperties += "\t\t\t{\n";
+                initProperties += $"\t\t\t\t.name = \"{f.Name}\",\n";
+                initProperties += $"\t\t\t\t.type_name = \"{f.Type.FullName}\",\n";
+                initProperties += $"\t\t\t\t.type_enum = Type::{GetTypeEnum(f.Type)},\n";
+                initProperties += $"\t\t\t\t.offset = offsetof({c.FullName}, {f.Name}),\n";
+                initProperties += $"\t\t\t\t.size = sizeof({c.FullName}::{f.Name})\n";
+                initProperties += "\t\t\t},\n";
 
             }
-            initProperties += "\t\t\t}";
+            initProperties += "\t\t}";
             template = template.Replace("__class_init_properties__", initProperties);
 
             return template;

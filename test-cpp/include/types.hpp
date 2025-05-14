@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 #if !defined(DONT_CRASH)
 #error This should not happen!
@@ -32,7 +33,7 @@ enum class [[obs::refl]] Fruit
 
     Banana
 };
-
+using namespace std;
 /**
  * This is a test struct.
  */
@@ -45,9 +46,20 @@ struct [[obs::refl]] DataStruct
         C
     };
 
-    [[obs::refl]] int32_t a = 1;
-    [[obs::refl]] float b = 5.0f;
-    [[obs::refl]] const char * c = "this is test";
+    [[obs::refl]]
+    int32_t a = 1;
+
+    [[obs::refl]]
+    float b = 5.0f;
+
+    [[obs::refl]]
+    const char * c = "this is test";
+
+    [[obs::refl]]
+    DataType d = DataType::A;
+
+    [[obs::refl]]
+    string e = "this is test";
 };
 
 } // SecondNamespace

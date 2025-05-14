@@ -34,11 +34,24 @@ struct Class<__class_scoped_name__>
 
 	static bool Read(void* out_value, void* object, const char* property_name)
     {
+        if (object == nullptr || out_value == nullptr || property_name == nullptr)
+        {
+            return false;
+        }
         for (auto& prop : Get())
         {
             if (strcmp(prop.name, property_name) == 0)
             {
-                memcpy(out_value, (char*)object + prop.offset, prop.size);
+                if (prop.type_enum == Type::String)
+                {
+                    std::string& out = *reinterpret_cast<std::string*>(out_value);
+                    std::string& in = *reinterpret_cast<std::string*>((char*)object + prop.offset);
+                    out = in;
+                }
+                else
+                {
+                    memcpy(out_value, (char*)object + prop.offset, prop.size);
+                }
                 return true;
             }
         }
@@ -47,11 +60,25 @@ struct Class<__class_scoped_name__>
 
     static bool Write(void* value, void* object, const char* property_name)
     {
+        if (object == nullptr || value == nullptr || property_name == nullptr)
+        {
+            return false;
+        }
         for (auto& prop : Get())
         {
+
             if (strcmp(prop.name, property_name) == 0)
             {
-                memcpy((char*)object + prop.offset, value, prop.size);
+                if (prop.type_enum == Type::String)
+                {
+                    std::string& in = *reinterpret_cast<std::string*>(value);
+                    std::string& out = *reinterpret_cast<std::string*>((char*)object + prop.offset);
+                    out = in;
+                }
+                else
+                {
+                    memcpy((char*)object + prop.offset, value, prop.size);
+                }
                 return true;
             }
         }

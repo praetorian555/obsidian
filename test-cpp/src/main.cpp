@@ -208,6 +208,18 @@ TEST_CASE("Struct reflection", "[refl][struct]")
         REQUIRE(strcmp(third_prop.type_name, "char const *") == 0);
         REQUIRE(third_prop.offset == offsetof(DataStruct, c));
         REQUIRE(third_prop.size == sizeof(char const *));
+
+        const Obs::Property& fourth_prop = *(Obs::Class<DataStruct>::Get().begin() + 3);
+        REQUIRE(strcmp(fourth_prop.name, "d") == 0);
+        REQUIRE(strcmp(fourth_prop.type_name, "FirstNamespace::SecondNamespace::DataStruct::DataType") == 0);
+        REQUIRE(fourth_prop.offset == offsetof(DataStruct, d));
+        REQUIRE(fourth_prop.size == sizeof(FirstNamespace::SecondNamespace::DataStruct::DataType));
+
+        const Obs::Property& fifth_prop = *(Obs::Class<DataStruct>::Get().begin() + 4);
+        REQUIRE(strcmp(fifth_prop.name, "e") == 0);
+        REQUIRE(strcmp(fifth_prop.type_name, "std::basic_string<char, std::char_traits<char>, std::allocator<char>>") == 0);
+        REQUIRE(fifth_prop.offset == offsetof(DataStruct, e));
+        REQUIRE(fifth_prop.size == sizeof(std::string));
     }
     SECTION("Read property values")
     {
@@ -215,18 +227,26 @@ TEST_CASE("Struct reflection", "[refl][struct]")
         data.a = 1;
         data.b = 2.0f;
         data.c = "Hello world!";
+        data.d = DataStruct::DataType::B;
+        data.e = "Hello world!";
 
         int a_val = 0;
         float b_val = 0.0f;
         char const* c_val = nullptr;
+        DataStruct::DataType d_val = DataStruct::DataType::A;
+        std::string e_val = "";
 
         Obs::Class<DataStruct>::Read(&a_val, &data, "a");
         Obs::Class<DataStruct>::Read(&b_val, &data, "b");
         Obs::Class<DataStruct>::Read(&c_val, &data, "c");
+        Obs::Class<DataStruct>::Read(&d_val, &data, "d");
+        Obs::Class<DataStruct>::Read(&e_val, &data, "e");
 
         REQUIRE(a_val == 1);
         REQUIRE(b_val == 2.0f);
         REQUIRE(strcmp(c_val, "Hello world!") == 0);
+        REQUIRE(d_val == DataStruct::DataType::B);
+        REQUIRE(strcmp(e_val.c_str(), "Hello world!") == 0);
     }
     SECTION("Write property values")
     {
@@ -234,17 +254,25 @@ TEST_CASE("Struct reflection", "[refl][struct]")
         data.a = 1;
         data.b = 2.0f;
         data.c = "Hello world!";
+        data.d = DataStruct::DataType::B;
+        data.e = "Hello world!";
 
         int a_val = 0;
         float b_val = 0.0f;
         char const* c_val = nullptr;
+        DataStruct::DataType d_val = DataStruct::DataType::A;
+        std::string e_val = "";
 
         Obs::Class<DataStruct>::Write(&a_val, &data, "a");
         Obs::Class<DataStruct>::Write(&b_val, &data, "b");
         Obs::Class<DataStruct>::Write(&c_val, &data, "c");
+        Obs::Class<DataStruct>::Write(&d_val, &data, "d");
+        Obs::Class<DataStruct>::Write(&e_val, &data, "e");
 
         REQUIRE(data.a == 0);
         REQUIRE(data.b == 0.0f);
         REQUIRE(data.c == nullptr);
+        REQUIRE(data.d == DataStruct::DataType::A);
+        REQUIRE(data.e == "");
     }
 }
