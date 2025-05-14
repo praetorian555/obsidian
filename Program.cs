@@ -1,9 +1,12 @@
 ﻿// See https://aka.ms/new-console-template for more information
+using ClangSharp;
 using CommandLine;
 using CppAst;
 using Obsidian;
 using System.Reflection.Emit;
 using System.Text.RegularExpressions;
+
+#pragma warning disable CS0618
 
 ParserResult<Options> parserResult = Parser.Default.ParseArguments<Options>(args);
 parserResult.WithParsed(Generator.RunProgram);
@@ -133,7 +136,7 @@ namespace Obsidian
             return item.Comment.ToString();
         }
 
-        public string GenerateReflectionInfo(ref string enumEntriesContent, List<string> outHeadersToInclude, CppEnum e)
+        public string GenerateCompileTimeReflectionInfo(List<string> outHeadersToInclude, CppEnum e)
         {
             string template = File.ReadAllText("enum.template");
             template = template.Replace("__enum_name__", e.Name);
@@ -165,27 +168,33 @@ namespace Obsidian
                 throw new Exception("Enumeration can't be empty!");
             }
 
-            enumEntriesContent += $"\t\t\t{{\n";
-            enumEntriesContent += $"\t\t\t\t.name = \"{e.Name}\",\n";
-            enumEntriesContent += $"\t\t\t\t.full_name = \"{e.FullName}\",\n";
-            enumEntriesContent += $"\t\t\t\t.description = \"{enumDesc}\",\n";
-            enumEntriesContent += $"\t\t\t\t.underlying_type_size = {e.IntegerType.SizeOf},\n";
-            enumEntriesContent += $"\t\t\t\t.items = {{\n";
-            prevItem = null;
+            return template;
+        }
+
+        private string GenerateRunTimeReflectionInfo(CppEnum e)
+        {
+            string reflContent = string.Empty;
+            string enumDesc = e.Comment != null ? e.Comment.ToString() : string.Empty;
+            reflContent += $"\t\t\t{{\n";
+            reflContent += $"\t\t\t\t.name = \"{e.Name}\",\n";
+            reflContent += $"\t\t\t\t.full_name = \"{e.FullName}\",\n";
+            reflContent += $"\t\t\t\t.description = \"{enumDesc}\",\n";
+            reflContent += $"\t\t\t\t.underlying_type_size = {e.IntegerType.SizeOf},\n";
+            reflContent += $"\t\t\t\t.items = {{\n";
+            CppEnumItem? prevItem = null;
             foreach (CppEnumItem item in e.Items)
             {
-                enumEntriesContent += $"\t\t\t\t\t{{\n";
-                enumEntriesContent += $"\t\t\t\t\t\t.name = \"{item.Name}\",\n";
+                reflContent += $"\t\t\t\t\t{{\n";
+                reflContent += $"\t\t\t\t\t\t.name = \"{item.Name}\",\n";
                 string itemDesc = GetDescription(prevItem, item);
                 prevItem = item;
-                enumEntriesContent += $"\t\t\t\t\t\t.description = \"{itemDesc}\",\n";
-                enumEntriesContent += $"\t\t\t\t\t\t.value = static_cast<uint64_t>({item.Value})\n";
-                enumEntriesContent += $"\t\t\t\t\t}},\n";
+                reflContent += $"\t\t\t\t\t\t.description = \"{itemDesc}\",\n";
+                reflContent += $"\t\t\t\t\t\t.value = static_cast<uint64_t>({item.Value})\n";
+                reflContent += $"\t\t\t\t\t}},\n";
             }
-            enumEntriesContent += $"\t\t\t\t}}\n";
-            enumEntriesContent += $"\t\t\t}},\n";
-
-            return template;
+            reflContent += $"\t\t\t\t}}\n";
+            reflContent += $"\t\t\t}},\n";
+            return reflContent;
         }
 
         private string GetTypeEnum(CppType type)
@@ -201,7 +210,7 @@ namespace Obsidian
             return "POD";
         }
 
-        public string GenerateReflectionInfo(ref string classEntriesContent, List<string> outHeadersToInclude, CppClass c)
+        public string GenerateCompileTimeReflectionInfo(List<string> outHeadersToInclude, CppClass c)
         {
             outHeadersToInclude.Add(c.SourceFile);
             string template = File.ReadAllText("class.template");
@@ -214,8 +223,10 @@ namespace Obsidian
             foreach (CppField f in c.Fields)
             {
                 if (!HasReflAttribute(f.TokenAttributes)) continue;
+                string fieldDesc = f.Comment != null ? f.Comment.ToString() : "";
                 initProperties += "\t\t\t{\n";
                 initProperties += $"\t\t\t\t.name = \"{f.Name}\",\n";
+                initProperties += $"\t\t\t\t.description = \"{fieldDesc}\",\n";
                 initProperties += $"\t\t\t\t.type_name = \"{f.Type.FullName}\",\n";
                 initProperties += $"\t\t\t\t.type_enum = Type::{GetTypeEnum(f.Type)},\n";
                 initProperties += $"\t\t\t\t.offset = offsetof({c.FullName}, {f.Name}),\n";
@@ -227,6 +238,34 @@ namespace Obsidian
             template = template.Replace("__class_init_properties__", initProperties);
 
             return template;
+        }
+
+        private string GenerateRunTimeReflectionInfo(CppClass c)
+        {
+            string reflContent = string.Empty;
+            string classDesc = c.Comment != null ? c.Comment.ToString() : string.Empty;
+            reflContent += $"\t\t\t{{\n";
+            reflContent += $"\t\t\t\t.name = \"{c.Name}\",\n";
+            reflContent += $"\t\t\t\t.scope = \"{c.FullParentName}\",\n";
+            reflContent += $"\t\t\t\t.scoped_name = \"{c.FullName}\",\n";
+            reflContent += $"\t\t\t\t.description = \"{classDesc}\",\n";
+            reflContent += $"\t\t\t\t.properties = {{\n";
+            foreach (CppField field in c.Fields)
+            {
+                if (!HasReflAttribute(field.TokenAttributes)) continue;
+                string fieldDesc = field.Comment != null ? field.Comment.ToString() : "";
+                reflContent += $"\t\t\t\t\t{{\n";
+                reflContent += $"\t\t\t\t\t\t.name = \"{field.Name}\",\n";
+                reflContent += $"\t\t\t\t\t\t.description = \"{fieldDesc}\",\n";
+                reflContent += $"\t\t\t\t\t\t.type_name = \"{field.Type.FullName}\",\n";
+                reflContent += $"\t\t\t\t\t\t.type_enum = Type::{GetTypeEnum(field.Type)},\n";
+                reflContent += $"\t\t\t\t\t\t.offset = offsetof({c.FullName}, {field.Name}),\n";
+                reflContent += $"\t\t\t\t\t\t.size = sizeof({c.FullName}::{field.Name})\n";
+                reflContent += $"\t\t\t\t\t}},\n";
+            }
+            reflContent += $"\t\t\t\t}}\n";
+            reflContent += $"\t\t\t}},\n";
+            return reflContent;
         }
 
         private bool HasReflAttribute(List<CppAttribute> attributes)
@@ -255,9 +294,11 @@ namespace Obsidian
                 {
                     continue;
                 }
-                string generatedCpp = GenerateReflectionInfo(ref enumEntriesContent, outHeadersToInclude, e);
+                string generatedCpp = GenerateCompileTimeReflectionInfo(outHeadersToInclude, e);
                 outStr += generatedCpp;
                 outStr += "\n";
+
+                enumEntriesContent += GenerateRunTimeReflectionInfo(e);
             }
         }
 
@@ -269,19 +310,35 @@ namespace Obsidian
                 {
                     continue;
                 }
-                string generatedCpp = GenerateReflectionInfo(ref classEntriesContent, outHeadersToInclude, c);
+                string generatedCpp = GenerateCompileTimeReflectionInfo(outHeadersToInclude, c);
                 outStr += generatedCpp;
                 outStr += "\n";
+
+                classEntriesContent += GenerateRunTimeReflectionInfo(c);
             }
+        }
+
+        private string GetEnumCollection(string enumEntries)
+        {
+            string enumCollection = File.ReadAllText("enum-collection.template");
+            enumCollection = enumCollection.Replace("__enum_collection_entries__", enumEntries);
+            return enumCollection;
+        }
+
+        private string GetClassCollection(string classEntries)
+        {
+            string classCollection = File.ReadAllText("class-collection.template");
+            classCollection = classCollection.Replace("__class_collection_entries__", classEntries);
+            return classCollection;
         }
 
         public string ProcessAst(CppCompilation compilation)
         {
             string outReflectionContent = File.ReadAllText("reflection-header.template");
             string enumReflectionContent = string.Empty;
-            string enumEntriesContent = string.Empty;
+            string enumEntriesContent = "\n\t\t{\n";
             string classReflectionContent = string.Empty;
-            string classEntriesContent = string.Empty;
+            string classEntriesContent = "\n\t\t{\n";
             List<string> headersToInclude = new List<string>();
 
             AppendEnumReflections(ref enumReflectionContent, ref enumEntriesContent, headersToInclude, compilation.Enums);
@@ -318,13 +375,21 @@ namespace Obsidian
                 }
             }
 
+
+            enumEntriesContent += "\t\t}\n";
+            classEntriesContent += "\t\t}\n";
+            string enumCollectionContent = GetEnumCollection(enumEntriesContent);
+            string classCollectionContent = GetClassCollection(classEntriesContent);
+
             string[] uniqueIncludes = headersToInclude.Select(NormalizePath).Distinct().ToArray();
             string headersToIncludeContent = string.Empty;
             foreach (string headerPath in uniqueIncludes)
             {
                 headersToIncludeContent += $"#include \"{headerPath}\"\n";
             }
-            outReflectionContent = outReflectionContent.Replace("__refl_enum_collection_entries__", enumEntriesContent);
+
+            outReflectionContent = outReflectionContent.Replace("__refl_enum_collection__", enumCollectionContent);
+            outReflectionContent = outReflectionContent.Replace("__refl_class_collection__", classCollectionContent);
             outReflectionContent = outReflectionContent.Replace("__refl_includes__", headersToIncludeContent);
             outReflectionContent = outReflectionContent.Replace("__refl_enum__", enumReflectionContent);
             outReflectionContent = outReflectionContent.Replace("__refl_class__", classReflectionContent);

@@ -68,58 +68,66 @@ TEST_CASE("Enum to name secondary", "[refl][enum]")
 
 TEST_CASE("Enum collection secondary", "[refl][enum]")
 {
-    Obs::EnumCollection& collection = Obs::EnumCollection::Get();
-    SECTION("Collection info")
+        SECTION("Collection info")
     {
-        REQUIRE(collection.entries.size() == 3);
-        REQUIRE(strcmp(collection.entries[0].name, "Vegetable") == 0);
-        REQUIRE(strcmp(collection.entries[0].full_name, "FirstNamespace::Vegetable") == 0);
-        REQUIRE(strcmp(collection.entries[0].description, "This is a vegetable enum.") == 0);
-        REQUIRE(collection.entries[0].underlying_type_size == 1);
-        REQUIRE(collection.entries[0].items.size() == 3);
-        REQUIRE(strcmp(collection.entries[1].name, "Fruit") == 0);
-        REQUIRE(strcmp(collection.entries[1].full_name, "FirstNamespace::SecondNamespace::Fruit") == 0);
-        REQUIRE(strcmp(collection.entries[1].description, "This is a fruit enum.") == 0);
-        REQUIRE(collection.entries[1].underlying_type_size == sizeof(int));
-        REQUIRE(collection.entries[1].items.size() == 3);
-        REQUIRE(strcmp(collection.entries[2].name, "DataType") == 0);
-        REQUIRE(strcmp(collection.entries[2].full_name, "FirstNamespace::SecondNamespace::DataStruct::DataType") == 0);
-        REQUIRE(strcmp(collection.entries[2].description, "") == 0);
-        REQUIRE(collection.entries[2].underlying_type_size == 2);
-        REQUIRE(collection.entries[2].items.size() == 3);
+        const Obs::EnumEntry* entry = nullptr;
+        REQUIRE(Obs::EnumCollection::GetEnum("Vegetable", entry));
+        REQUIRE(strcmp(entry->name, "Vegetable") == 0);
+        REQUIRE(strcmp(entry->full_name, "FirstNamespace::Vegetable") == 0);
+        REQUIRE(strcmp(entry->description, "This is a vegetable enum.") == 0);
+        REQUIRE(entry->underlying_type_size == 1);
+        REQUIRE(entry->items.size() == 3);
+        REQUIRE(Obs::EnumCollection::GetEnum("Fruit", entry));
+        REQUIRE(strcmp(entry->name, "Fruit") == 0);
+        REQUIRE(strcmp(entry->full_name, "FirstNamespace::SecondNamespace::Fruit") == 0);
+        REQUIRE(strcmp(entry->description, "This is a fruit enum.") == 0);
+        REQUIRE(entry->underlying_type_size == sizeof(int));
+        REQUIRE(entry->items.size() == 3);
+        REQUIRE(Obs::EnumCollection::GetEnum("DataType", entry));
+        REQUIRE(strcmp(entry->name, "DataType") == 0);
+        REQUIRE(strcmp(entry->full_name, "FirstNamespace::SecondNamespace::DataStruct::DataType") == 0);
+        REQUIRE(strcmp(entry->description, "") == 0);
+        REQUIRE(entry->underlying_type_size == 2);
+        REQUIRE(entry->items.size() == 3);
     }
     SECTION("Collection items")
     {
-        REQUIRE(strcmp(collection.entries[0].items[0].name, "Carrot") == 0);
-        REQUIRE(static_cast<int8_t>(collection.entries[0].items[0].value) == -10);
-        REQUIRE(strcmp(collection.entries[0].items[1].name, "Potato") == 0);
-        REQUIRE(static_cast<int8_t>(collection.entries[0].items[1].value) == -9);
-        REQUIRE(strcmp(collection.entries[0].items[2].name, "Cucumber") == 0);
-        REQUIRE(static_cast<int8_t>(collection.entries[0].items[2].value) == -8);
+        const Obs::EnumEntry* entry = nullptr;
+        REQUIRE(Obs::EnumCollection::GetEnum("Vegetable", entry));
+        REQUIRE(strcmp(entry->items[0].name, "Carrot") == 0);
+        REQUIRE(static_cast<int8_t>(entry->items[0].value) == -10);
+        REQUIRE(strcmp(entry->items[1].name, "Potato") == 0);
+        REQUIRE(static_cast<int8_t>(entry->items[1].value) == -9);
+        REQUIRE(strcmp(entry->items[2].name, "Cucumber") == 0);
+        REQUIRE(static_cast<int8_t>(entry->items[2].value) == -8);
 
-        REQUIRE(strcmp(collection.entries[1].items[0].name, "Apple") == 0);
-        REQUIRE(static_cast<int>(collection.entries[1].items[0].value) == 5);
-        REQUIRE(strcmp(collection.entries[1].items[1].name, "Orange") == 0);
-        REQUIRE(static_cast<int>(collection.entries[1].items[1].value) == 6);
-        REQUIRE(strcmp(collection.entries[1].items[2].name, "Banana") == 0);
-        REQUIRE(static_cast<int>(collection.entries[1].items[2].value) == 7);
+        REQUIRE(Obs::EnumCollection::GetEnum("Fruit", entry));
+        REQUIRE(strcmp(entry->items[0].name, "Apple") == 0);
+        REQUIRE(strcmp(entry->items[0].description, "") == 0);
+        REQUIRE(static_cast<int>(entry->items[0].value) == 5);
+        REQUIRE(strcmp(entry->items[1].name, "Orange") == 0);
+        REQUIRE(strcmp(entry->items[1].description, "This is orange.") == 0);
+        REQUIRE(static_cast<int>(entry->items[1].value) == 6);
+        REQUIRE(strcmp(entry->items[2].name, "Banana") == 0);
+        REQUIRE(static_cast<int>(entry->items[2].value) == 7);
     }
     SECTION("Collection get item value by name")
     {
         FirstNamespace::Vegetable val = FirstNamespace::Vegetable::Carrot;
-        collection.GetValue(&val, "Vegetable", "Potato");
+        REQUIRE(Obs::EnumCollection::GetValue(&val, "Vegetable", "Potato"));
         REQUIRE(val == FirstNamespace::Vegetable::Potato);
 
         Fruit val2 = Fruit::Apple;
-        collection.GetValue(&val2, "Fruit", "Orange");
+        REQUIRE(Obs::EnumCollection::GetValue(&val2, "Fruit", "Orange"));
         REQUIRE(val2 == Fruit::Orange);
     }
     SECTION("Collection get enum entry by name")
     {
-        auto entry = collection.GetEnumEntry("Fruit");
-        REQUIRE(strcmp(entry.name, "Fruit") == 0);
-        REQUIRE(strcmp(entry.full_name, "FirstNamespace::SecondNamespace::Fruit") == 0);
-        REQUIRE(entry.underlying_type_size == sizeof(int));
-        REQUIRE(entry.items.size() == 3);
+        const Obs::EnumEntry* entry = nullptr;
+        REQUIRE(Obs::EnumCollection::GetEnum("Fruit", entry));
+        REQUIRE(strcmp(entry->name, "Fruit") == 0);
+        REQUIRE(strcmp(entry->full_name, "FirstNamespace::SecondNamespace::Fruit") == 0);
+        REQUIRE(entry->underlying_type_size == sizeof(int));
+        REQUIRE(entry->items.size() == 3);
     }
 }
