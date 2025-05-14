@@ -119,6 +119,9 @@ namespace Obsidian
             options.IncludeFolders.AddRange(_options.IncludeFolders);
             options.SystemIncludeFolders.AddRange(_options.IncludeSystemFolders);
             options.Defines.AddRange(_options.Defines);
+            // Make sure that on Linux builds we include all interfaces for system headers
+            options.Defines.Add("__STRICT_ANSI__");
+            options.Defines.Add("_GNU_SOURCE");
             return CppParser.ParseFiles(headerFiles.ToList(), options);
         }
 
