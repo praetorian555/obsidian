@@ -1,6 +1,5 @@
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 
 #include "opal/container/dynamic-array.h"
 #include "opal/container/string.h"
@@ -8,10 +7,11 @@
 
 #include "clang-c/Index.h"
 
-struct CppEnumValue
+struct CppEnumConstant
 {
     Opal::StringUtf8 name;
-    Opal::StringUtf8 value;
+    Opal::StringUtf8 description;
+    Opal::i64 value = -1;
 };
 
 struct CppAttribute
@@ -23,8 +23,16 @@ struct CppAttribute
 struct CppEnum
 {
     Opal::StringUtf8 name;
-    Opal::DynamicArray<CppEnumValue> values;
+    Opal::StringUtf8 description;
+    Opal::StringUtf8 underlying_type;
+    bool is_enum_class = false;
+    Opal::DynamicArray<CppEnumConstant> constants;
     Opal::DynamicArray<CppAttribute> attributes;
+};
+
+struct CppContext
+{
+    Opal::DynamicArray<CppEnum> enums;
 };
 
 Opal::StringUtf8 ToString(const CXString& clang_str)
@@ -47,9 +55,133 @@ bool Split(const Opal::StringUtf8& in, Opal::StringUtf8& name, Opal::StringUtf8&
     return true;
 }
 
+bool StartsWith(const Opal::StringUtf8& str, const Opal::StringUtf8& prefix)
+{
+    if (prefix.GetSize() > str.GetSize())
+    {
+        return false;
+    }
+    for (Opal::i32 i = 0; i < prefix.GetSize(); i++)
+    {
+        if (prefix[i] != str[i])
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void CollectAttributes(const Opal::ArrayView<CXToken>& tokens, const CXTranslationUnit& translation_unit,
+                       Opal::DynamicArray<CppAttribute>& attributes)
+{
+    enum class StateMachine
+    {
+        OpenBracket,
+        CollectAttributes,
+    };
+
+    StateMachine state = StateMachine::OpenBracket;
+    for (Opal::u32 i = 0; i < tokens.GetSize(); i++)
+    {
+        CXString token_spelling = clang_getTokenSpelling(translation_unit, tokens[i]);
+        Opal::StringUtf8 token_name = ToString(token_spelling);
+
+        switch (state)
+        {
+            case StateMachine::OpenBracket:
+            {
+                if (token_name != "(")
+                {
+                    printf("Bad token detected! Expected '('...");
+                    return;
+                }
+                state = StateMachine::CollectAttributes;
+                break;
+            }
+            case StateMachine::CollectAttributes:
+            {
+                if (token_name == ")")
+                {
+                    return;
+                }
+                CXTokenKind token_kind = clang_getTokenKind(tokens[i]);
+                if (token_kind == CXToken_Literal)
+                {
+                    Opal::StringUtf8 parameter = ToString(clang_getTokenSpelling(translation_unit, tokens[i]));
+                    if (StartsWith(parameter, "\""))
+                    {
+                        parameter = Opal::GetSubString(parameter, 1, parameter.GetSize() - 2).GetValue();
+                    }
+                    CppAttribute attribute;
+                    Split(parameter, attribute.name, attribute.value);
+                    if (attribute.value.IsEmpty())
+                    {
+                        attribute.value = "1";
+                    }
+                    attributes.PushBack(attribute);
+                }
+                break;
+            }
+            default:
+            {
+            }
+        }
+    }
+}
+
+Opal::i32 GetMacroTokenPosition(const Opal::ArrayView<CXToken>& tokens, const CXTranslationUnit& translation_unit,
+                                const Opal::StringUtf8& macro)
+{
+    for (Opal::u32 i = 0; i < tokens.GetSize(); i++)
+    {
+        CXString token_spelling = clang_getTokenSpelling(translation_unit, tokens[i]);
+        Opal::StringUtf8 token_name = ToString(token_spelling);
+        if (token_name == macro)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+Opal::StringUtf8 GetEnumConstantDescription(CXCursor cursor)
+{
+    CXSourceRange comment_range = clang_Cursor_getCommentRange(cursor);
+    CXSourceLocation comment_range_end = clang_getRangeEnd(comment_range);
+    CXSourceLocation cursor_start = clang_getCursorLocation(cursor);
+    Opal::u32 comment_end_line;
+    Opal::u32 cursor_start_line;
+    clang_getSpellingLocation(comment_range_end, nullptr, &comment_end_line, nullptr, nullptr);
+    clang_getSpellingLocation(cursor_start, nullptr, &cursor_start_line, nullptr, nullptr);
+    if (cursor_start_line - comment_end_line > 1)
+    {
+        return {};
+    }
+    return ToString(clang_Cursor_getBriefCommentText(cursor));
+}
+
+CXChildVisitResult VisitorEnumConstant(CXCursor cursor, CXCursor parent, CXClientData client_data)
+{
+    CXCursorKind kind = clang_getCursorKind(cursor);
+    if (kind != CXCursor_EnumConstantDecl)
+    {
+        return CXChildVisit_Continue;
+    }
+
+    auto* cpp_enum = static_cast<CppEnum*>(client_data);
+    CppEnumConstant enum_constant;
+    enum_constant.name = ToString(clang_getCursorSpelling(cursor));
+    enum_constant.description = GetEnumConstantDescription(cursor);
+    enum_constant.value = clang_getEnumConstantDeclValue(cursor);
+    cpp_enum->constants.PushBack(Opal::Move(enum_constant));
+
+    return CXChildVisit_Continue;
+}
+
 CXChildVisitResult Visitor(CXCursor cursor, CXCursor parent, CXClientData client_data)
 {
     CXCursorKind kind = clang_getCursorKind(cursor);
+    auto* context = static_cast<CppContext*>(client_data);
 
     if (kind == CXCursor_EnumDecl)
     {
@@ -65,53 +197,24 @@ CXChildVisitResult Visitor(CXCursor cursor, CXCursor parent, CXClientData client
 
         constexpr Opal::i32 k_go_back_bytes = 200;
 
-        const Opal::u32 prev_line = static_cast<Opal::u32>(Opal::Max(0, static_cast<Opal::i32>(line) - 1));
+        const auto prev_line = static_cast<Opal::u32>(Opal::Max(0, static_cast<Opal::i32>(line) - 1));
         CXSourceLocation new_start = clang_getLocation(translation_unit, file, prev_line, 1);
         CXSourceRange extended_range = clang_getRange(new_start, clang_getRangeEnd(tu_range));
 
-        CXToken* tokens = nullptr;
+        CXToken* tokens_data = nullptr;
         Opal::u32 tokens_count = 0;
-        clang_tokenize(translation_unit, extended_range, &tokens, &tokens_count);
-
-        for (Opal::u32 i = 0; i < tokens_count; i++)
+        clang_tokenize(translation_unit, extended_range, &tokens_data, &tokens_count);
+        Opal::ArrayView<CXToken> tokens(tokens_data, tokens_count);
+        Opal::i32 qualifier_pos = GetMacroTokenPosition(tokens, translation_unit, "OBS_ENUM");
+        if (qualifier_pos >= 0)
         {
-            CXString token_spelling = clang_getTokenSpelling(translation_unit, tokens[i]);
-            Opal::StringUtf8 token_name = ToString(token_spelling);
-            if (token_name == "OBS_ENUM")
-            {
-                CppEnum enum_obj;
-                enum_obj.name = name;
-                printf("Enum: %s\n", name.GetData());
-                i++;
-                if (i < tokens_count)
-                {
-                    token_name = ToString(clang_getTokenSpelling(translation_unit, tokens[i]));
-                    if (token_name == "(")
-                    {
-                        i++;
-                        while (i < tokens_count)
-                        {
-                            token_name = ToString(clang_getTokenSpelling(translation_unit, tokens[i]));
-                            if (token_name == ")")
-                            {
-                                break;
-                            }
-                            CXTokenKind token_kind = clang_getTokenKind(tokens[i]);
-                            if (token_kind == CXToken_Literal)
-                            {
-                                Opal::StringUtf8 parameter = ToString(clang_getTokenSpelling(translation_unit, tokens[i]));
-                                parameter = Opal::GetSubString(parameter, 1, parameter.GetSize() - 2).GetValue();
-                                CppAttribute attribute;
-                                Split(parameter, attribute.name, attribute.value);
-                                printf("\tAttribute: name=%s, value=%s\n", attribute.name.GetData(), attribute.value.GetData());
-                                enum_obj.attributes.PushBack(attribute);
-                            }
-                            i++;
-                        }
-                    }
-                }
-                break;
-            }
+            CppEnum cpp_enum{.name = name, .description = ToString(clang_Cursor_getBriefCommentText(cursor))};
+            CXType underlying_type = clang_getEnumDeclIntegerType(cursor);
+            cpp_enum.underlying_type = ToString(clang_getTypeSpelling(underlying_type));
+            cpp_enum.is_enum_class = clang_EnumDecl_isScoped(cursor) != 0;
+            CollectAttributes({tokens.GetData() + 1, tokens.GetSize() - 1}, translation_unit, cpp_enum.attributes);
+            clang_visitChildren(cursor, VisitorEnumConstant, &cpp_enum);
+            context->enums.PushBack(cpp_enum);
         }
     }
 
@@ -150,7 +253,29 @@ int main(int argc, char** argv)
 
     CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
 
-    clang_visitChildren(cursor, Visitor, nullptr);
+    CppContext context;
+    clang_visitChildren(cursor, Visitor, &context);
+
+    printf("Enums:\n");
+    for (Opal::i32 i = 0; i < context.enums.GetSize(); i++)
+    {
+        printf("\t%s:\n", context.enums[i].name.GetData());
+        printf("\t\tUnderlying Type: %s\n", context.enums[i].underlying_type.GetData());
+        printf("\t\tIs Enum Class: %s\n", context.enums[i].is_enum_class ? "Yes" : "No");
+        printf("\t\tDescription: %s\n", context.enums[i].description.GetData());
+        printf("\t\tConstants:\n");
+        for (Opal::u32 j = 0; j < context.enums[i].constants.GetSize(); j++)
+        {
+            const CppEnumConstant& constant = context.enums[i].constants[j];
+            printf("\t\t\tname=%s, value=%lld, description=%s\n", constant.name.GetData(), constant.value, constant.description.GetData());
+        }
+        printf("\t\tAttributes:\n");
+        for (Opal::u32 j = 0; j < context.enums[i].attributes.GetSize(); j++)
+        {
+            const CppAttribute& attr = context.enums[i].attributes[j];
+            printf("\t\t\t%s=%s\n", attr.name.GetData(), attr.value.GetData());
+        }
+    }
 
     clang_disposeTranslationUnit(translation_unit);
     clang_disposeIndex(index);
