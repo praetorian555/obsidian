@@ -1,9 +1,11 @@
+#include <complex>
 #include <cstdio>
 #include <cstdlib>
 
 #include "opal/container/dynamic-array.h"
 #include "opal/container/string.h"
 #include "opal/math-base.h"
+#include "opal/paths.h"
 
 #include "clang-c/Index.h"
 
@@ -55,8 +57,19 @@ struct CppClass
     Opal::DynamicArray<CppAttribute> attributes;
 };
 
+struct ProgramArguments
+{
+    Opal::StringUtf8 input_file;
+    Opal::StringUtf8 input_dir;
+    Opal::StringUtf8 output_dir;
+    Opal::DynamicArray<Opal::StringUtf8> compile_options;
+    bool should_dump_ast = false;
+    bool use_separate_files = false;
+};
+
 struct CppContext
 {
+    ProgramArguments arguments;
     Opal::DynamicArray<CppEnum> enums;
     Opal::DynamicArray<CppClass> classes;
 };
@@ -90,6 +103,22 @@ bool Split(const Opal::StringUtf8& in, Opal::StringUtf8& name, Opal::StringUtf8&
     name = Opal::GetSubString(in, 0, pos).GetValue();
     value = Opal::GetSubString(in, pos + 1, Opal::StringUtf8::k_npos).GetValue();
     return true;
+}
+
+void SplitToArray(const Opal::StringUtf8& in, Opal::DynamicArray<Opal::StringUtf8>& out, const Opal::StringUtf8& delimiter)
+{
+    Opal::StringUtf8::size_type start_pos = 0;
+    while (true)
+    {
+        Opal::StringUtf8::size_type pos = Opal::Find(in, delimiter, start_pos);
+        if (pos == Opal::StringUtf8::k_npos)
+        {
+            out.PushBack(Opal::GetSubString(in, start_pos, Opal::StringUtf8::k_npos).GetValue());
+            break;
+        }
+        out.PushBack(Opal::GetSubString(in, start_pos, pos - start_pos).GetValue());
+        start_pos = pos + 1;
+    }
 }
 
 bool StartsWith(const Opal::StringUtf8& str, const Opal::StringUtf8& prefix)
@@ -200,8 +229,7 @@ void CollectAttributes(const Opal::ArrayView<CXToken>& tokens, const CXTranslati
     }
 }
 
-Opal::i32 GetMacroTokenPosition(const CppTokens& tokens, const CXTranslationUnit& translation_unit,
-                                const Opal::StringUtf8& macro)
+Opal::i32 GetMacroTokenPosition(const CppTokens& tokens, const CXTranslationUnit& translation_unit, const Opal::StringUtf8& macro)
 {
     for (Opal::u32 i = 0; i < tokens.count; i++)
     {
@@ -369,41 +397,108 @@ CXChildVisitResult Visitor(CXCursor cursor, CXCursor parent, CXClientData client
     return CXChildVisit_Recurse;
 }
 
-int main(int argc, char** argv)
+void ParseArguments(int argc, char** argv, ProgramArguments& arguments)
 {
-    if (argc < 2)
+    Opal::StringUtf8 arg;
+    arg.Reserve(1024);
+    for (int i = 1; i < argc; i++)
     {
-        printf("Usage: %s <filename>\n", argv[0]);
-        return 1;
+        arg = argv[i];
+        if (arg == "-input-file")
+        {
+            if (!arguments.input_dir.IsEmpty())
+            {
+                printf("Error: You must specify either input directory or input file, not both\n");
+                exit(1);
+            }
+            i++;
+            if (i < argc)
+            {
+                arguments.input_file = argv[i];
+                if (!Opal::Paths::Exists(arguments.input_file))
+                {
+                    printf("Error: Input file does not exist\n");
+                    exit(1);
+                }
+            }
+            else
+            {
+                printf("Error: Missing input file\n");
+                exit(1);
+            }
+        }
+        else if (arg == "-input-dir")
+        {
+            if (!arguments.input_dir.IsEmpty())
+            {
+                printf("Error: You must specify either input directory or input file, not both\n");
+                exit(1);
+            }
+            i++;
+            if (i < argc)
+            {
+                arguments.input_dir = argv[i];
+                if (!Opal::Paths::Exists(arguments.input_dir))
+                {
+                    printf("Error: Input directory does not exist\n");
+                    exit(1);
+                }
+            }
+            else
+            {
+                printf("Error: No input directory specified\n");
+                exit(1);
+            }
+        }
+        else if (arg == "-output-dir")
+        {
+            i++;
+            if (i < argc)
+            {
+                arguments.output_dir = argv[i];
+                if (!Opal::Paths::Exists(arguments.output_dir))
+                {
+                    printf("Error: Input directory does not exist\n");
+                    exit(1);
+                }
+            }
+            else
+            {
+                printf("Error: No output directory specified\n");
+                exit(1);
+            }
+        }
+        else if (arg == "-dump-ast")
+        {
+            arguments.should_dump_ast = true;
+        }
+        else if (arg == "-separate-files")
+        {
+            arguments.use_separate_files = true;
+        }
+        else if (arg == "-compile-options")
+        {
+            i++;
+            if (i < argc)
+            {
+                Opal::StringUtf8 options = argv[i];
+                SplitToArray(options, arguments.compile_options, " ");
+            }
+            else
+            {
+                printf("Error: Missing compile options\n");
+                exit(1);
+            }
+        }
+        else if (arg == "-help")
+        {
+            // TODO: Print help
+        }
     }
+}
 
-    CXIndex index = clang_createIndex(0, 0);
-
-    const char* args[] = {"-Wall", "-std=c++20", "-DDONT_CRASH=1"};
-    CXTranslationUnit translation_unit =
-        clang_parseTranslationUnit(index, argv[1], args, 3, nullptr, 0, CXTranslationUnit_DetailedPreprocessingRecord);
-    if (translation_unit == nullptr)
-    {
-        printf("Failed to parse translation_unit\n");
-        return 1;
-    }
-
-    // Check for diagnostics
-    unsigned numDiags = clang_getNumDiagnostics(translation_unit);
-    for (unsigned i = 0; i < numDiags; i++)
-    {
-        CXDiagnostic diag = clang_getDiagnostic(translation_unit, i);
-        CXString diagStr = clang_formatDiagnostic(diag, CXDiagnostic_DisplaySourceLocation);
-        printf("Diagnostic: %s\n", clang_getCString(diagStr));
-        clang_disposeString(diagStr);
-        clang_disposeDiagnostic(diag);
-    }
-
-    CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
-
-    CppContext context;
-    clang_visitChildren(cursor, Visitor, &context);
-
+void DumpAst(const CppContext& context)
+{
     printf("Enums:\n");
     for (Opal::i32 i = 0; i < context.enums.GetSize(); i++)
     {
@@ -451,8 +546,59 @@ int main(int argc, char** argv)
             printf("\t\t\t%s=%s\n", attr.name.GetData(), attr.value.GetData());
         }
     }
+}
 
+CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXIndex index, Opal::ArrayView<Opal::StringUtf8> args)
+{
+    Opal::DynamicArray<const char*> args_array(args.GetSize());
+    printf("Using following compile options:");
+    for (Opal::u32 i = 0; i < args.GetSize(); i++)
+    {
+        args_array[i] = args[i].GetData();
+        printf(" %s", args[i].GetData());
+    }
+    printf("\n");
+    CXTranslationUnit translation_unit = clang_parseTranslationUnit(index, input_file.GetData(), args_array.GetData(), args_array.GetSize(),
+                                                                    nullptr, 0, CXTranslationUnit_DetailedPreprocessingRecord);
+    if (translation_unit == nullptr)
+    {
+        printf("Failed to parse translation_unit\n");
+        exit(1);
+    }
+    return translation_unit;
+}
+
+void ProcessTranslationUnit(CppContext& context, CXIndex index)
+{
+    auto compile_options = Opal::ArrayView<Opal::StringUtf8>{context.arguments.compile_options};
+    CXTranslationUnit translation_unit = ParseTranslationUnit(context.arguments.input_file, index, compile_options);
+    CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
+    clang_visitChildren(cursor, Visitor, &context);
     clang_disposeTranslationUnit(translation_unit);
+}
+
+int main(int argc, char** argv)
+{
+    ProgramArguments arguments;
+    ParseArguments(argc, argv, arguments);
+
+    CXIndex index = clang_createIndex(0, 0);
+
+    CppContext context{.arguments = arguments};
+    if (!arguments.input_file.IsEmpty())
+    {
+        ProcessTranslationUnit(context, index);
+    }
+    else if (!arguments.input_dir.IsEmpty())
+    {
+        // TODO: Handle search for the header files
+    }
+
+    if (context.arguments.should_dump_ast)
+    {
+        DumpAst(context);
+    }
+
     clang_disposeIndex(index);
     return 0;
 }
