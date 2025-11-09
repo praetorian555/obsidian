@@ -32,9 +32,30 @@ struct CppEnum
     Opal::DynamicArray<CppAttribute> attributes;
 };
 
+struct CppProperty
+{
+    Opal::StringUtf8 name;
+    Opal::StringUtf8 type;
+    Opal::StringUtf8 description;
+    Opal::StringUtf8 value;
+    Opal::DynamicArray<CppAttribute> attributes;
+};
+
+struct CppClass
+{
+    Opal::StringUtf8 name;
+    Opal::StringUtf8 full_name;
+    Opal::StringUtf8 scope;
+    Opal::StringUtf8 description;
+    bool is_struct = false;
+    Opal::DynamicArray<CppProperty> properties;
+    Opal::DynamicArray<CppAttribute> attributes;
+};
+
 struct CppContext
 {
     Opal::DynamicArray<CppEnum> enums;
+    Opal::DynamicArray<CppClass> classes;
 };
 
 Opal::StringUtf8 ToString(const CXString& clang_str)
@@ -196,6 +217,121 @@ CXChildVisitResult VisitorEnumConstant(CXCursor cursor, CXCursor parent, CXClien
     return CXChildVisit_Continue;
 }
 
+void VisitEnum(CXCursor cursor, CppContext& context)
+{
+    CXString name_spelling = clang_getCursorSpelling(cursor);
+    Opal::StringUtf8 name = ToString(name_spelling);
+
+    CXTranslationUnit translation_unit = clang_Cursor_getTranslationUnit(cursor);
+    CXSourceRange tu_range = clang_getCursorExtent(cursor);
+    CXSourceLocation start = clang_getCursorLocation(cursor);
+    CXFile file;
+    Opal::u32 line, column, offset;
+    clang_getSpellingLocation(start, &file, &line, &column, &offset);
+
+    const auto prev_line = static_cast<Opal::u32>(Opal::Max(0, static_cast<Opal::i32>(line) - 1));
+    CXSourceLocation new_start = clang_getLocation(translation_unit, file, prev_line, 1);
+    CXSourceRange extended_range = clang_getRange(new_start, clang_getRangeEnd(tu_range));
+
+    CXToken* tokens_data = nullptr;
+    Opal::u32 tokens_count = 0;
+    clang_tokenize(translation_unit, extended_range, &tokens_data, &tokens_count);
+    Opal::ArrayView<CXToken> tokens(tokens_data, tokens_count);
+    Opal::i32 qualifier_pos = GetMacroTokenPosition(tokens, translation_unit, "OBS_ENUM");
+    if (qualifier_pos >= 0)
+    {
+        CppEnum cpp_enum{.name = name, .description = ToString(clang_Cursor_getBriefCommentText(cursor))};
+        CXType underlying_type = clang_getEnumDeclIntegerType(cursor);
+        cpp_enum.underlying_type = ToString(clang_getTypeSpelling(underlying_type));
+        cpp_enum.is_enum_class = clang_EnumDecl_isScoped(cursor) != 0;
+        CollectAttributes({tokens.GetData() + 1, tokens.GetSize() - 1}, translation_unit, cpp_enum.attributes);
+        clang_visitChildren(cursor, VisitorEnumConstant, &cpp_enum);
+
+        Opal::DynamicArray<Opal::StringUtf8> parents;
+        CollectScope(cursor, parents);
+        Opal::StringUtf8 scope;
+        for (Opal::i32 i = static_cast<Opal::i32>(parents.GetSize()) - 1; i >= 0; i--)
+        {
+            scope += parents[i] + "::";
+        }
+        if (!scope.IsEmpty())
+        {
+            scope = Opal::GetSubString(scope, 0, scope.GetSize() - 2).GetValue();
+        }
+        cpp_enum.full_name = scope + "::" + cpp_enum.name;
+        cpp_enum.scope = Opal::Move(scope);
+
+        context.enums.PushBack(cpp_enum);
+    }
+}
+
+CXChildVisitResult VisitorClassProperty(CXCursor cursor, CXCursor parent, CXClientData client_data)
+{
+    // CXCursorKind kind = clang_getCursorKind(cursor);
+    // if (kind != CXCursor_FieldDecl)
+    // {
+    //     return CXChildVisit_Continue;
+    // }
+    //
+    // auto* cpp_class = static_cast<CppClass*>(client_data);
+    // CppProperty property;
+    // property.name = ToString(clang_getCursorSpelling(cursor));
+    // CXType type = clang_getCursorType(cursor);
+    // property.type = ToString(clang_getTypeSpelling(type));
+    // property.description = GetEnumConstantDescription(cursor);
+    //
+    // cpp_class->properties.PushBack(Opal::Move(property));
+
+    return CXChildVisit_Continue;
+}
+
+void VisitClass(CXCursor cursor, CppContext& context)
+{
+    CXString name_spelling = clang_getCursorSpelling(cursor);
+    Opal::StringUtf8 name = ToString(name_spelling);
+
+    CXTranslationUnit translation_unit = clang_Cursor_getTranslationUnit(cursor);
+    CXSourceRange tu_range = clang_getCursorExtent(cursor);
+    CXSourceLocation start = clang_getCursorLocation(cursor);
+    CXFile file;
+    Opal::u32 line, column, offset;
+    clang_getSpellingLocation(start, &file, &line, &column, &offset);
+
+    const auto prev_line = static_cast<Opal::u32>(Opal::Max(0, static_cast<Opal::i32>(line) - 1));
+    CXSourceLocation new_start = clang_getLocation(translation_unit, file, prev_line, 1);
+    CXSourceRange extended_range = clang_getRange(new_start, clang_getRangeEnd(tu_range));
+
+    CXToken* tokens_data = nullptr;
+    Opal::u32 tokens_count = 0;
+    clang_tokenize(translation_unit, extended_range, &tokens_data, &tokens_count);
+    Opal::ArrayView<CXToken> tokens(tokens_data, tokens_count);
+    Opal::i32 qualifier_pos = GetMacroTokenPosition(tokens, translation_unit, "OBS_CLASS");
+    if (qualifier_pos >= 0)
+    {
+        CppClass cpp_class{.name = name, .description = ToString(clang_Cursor_getBriefCommentText(cursor))};
+        cpp_class.is_struct = clang_getCursorKind(cursor) == CXCursor_StructDecl;
+        CollectAttributes({tokens.GetData() + 1, tokens.GetSize() - 1}, translation_unit, cpp_class.attributes);
+
+        clang_visitChildren(cursor, VisitorClassProperty, &cpp_class);
+
+        Opal::DynamicArray<Opal::StringUtf8> parents;
+        CollectScope(cursor, parents);
+        Opal::StringUtf8 scope;
+        for (Opal::i32 i = static_cast<Opal::i32>(parents.GetSize()) - 1; i >= 0; i--)
+        {
+            scope += parents[i] + "::";
+        }
+        if (!scope.IsEmpty())
+        {
+            scope = Opal::GetSubString(scope, 0, scope.GetSize() - 2).GetValue();
+        }
+        cpp_class.full_name = scope + "::" + cpp_class.name;
+        cpp_class.scope = Opal::Move(scope);
+
+        context.classes.PushBack(cpp_class);
+    }
+}
+
 CXChildVisitResult Visitor(CXCursor cursor, CXCursor parent, CXClientData client_data)
 {
     CXCursorKind kind = clang_getCursorKind(cursor);
@@ -203,50 +339,11 @@ CXChildVisitResult Visitor(CXCursor cursor, CXCursor parent, CXClientData client
 
     if (kind == CXCursor_EnumDecl)
     {
-        CXString name_spelling = clang_getCursorSpelling(cursor);
-        Opal::StringUtf8 name = ToString(name_spelling);
-
-        CXTranslationUnit translation_unit = clang_Cursor_getTranslationUnit(cursor);
-        CXSourceRange tu_range = clang_getCursorExtent(cursor);
-        CXSourceLocation start = clang_getCursorLocation(cursor);
-        CXFile file;
-        Opal::u32 line, column, offset;
-        clang_getSpellingLocation(start, &file, &line, &column, &offset);
-
-        const auto prev_line = static_cast<Opal::u32>(Opal::Max(0, static_cast<Opal::i32>(line) - 1));
-        CXSourceLocation new_start = clang_getLocation(translation_unit, file, prev_line, 1);
-        CXSourceRange extended_range = clang_getRange(new_start, clang_getRangeEnd(tu_range));
-
-        CXToken* tokens_data = nullptr;
-        Opal::u32 tokens_count = 0;
-        clang_tokenize(translation_unit, extended_range, &tokens_data, &tokens_count);
-        Opal::ArrayView<CXToken> tokens(tokens_data, tokens_count);
-        Opal::i32 qualifier_pos = GetMacroTokenPosition(tokens, translation_unit, "OBS_ENUM");
-        if (qualifier_pos >= 0)
-        {
-            CppEnum cpp_enum{.name = name, .description = ToString(clang_Cursor_getBriefCommentText(cursor))};
-            CXType underlying_type = clang_getEnumDeclIntegerType(cursor);
-            cpp_enum.underlying_type = ToString(clang_getTypeSpelling(underlying_type));
-            cpp_enum.is_enum_class = clang_EnumDecl_isScoped(cursor) != 0;
-            CollectAttributes({tokens.GetData() + 1, tokens.GetSize() - 1}, translation_unit, cpp_enum.attributes);
-            clang_visitChildren(cursor, VisitorEnumConstant, &cpp_enum);
-
-            Opal::DynamicArray<Opal::StringUtf8> parents;
-            CollectScope(cursor, parents);
-            Opal::StringUtf8 scope;
-            for (Opal::i32 i = static_cast<Opal::i32>(parents.GetSize()) - 1; i >= 0; i--)
-            {
-                scope += parents[i] + "::";
-            }
-            if (!scope.IsEmpty())
-            {
-                scope = Opal::GetSubString(scope, 0, scope.GetSize() - 2).GetValue();
-            }
-            cpp_enum.full_name = scope + "::" + cpp_enum.name;
-            cpp_enum.scope = Opal::Move(scope);
-
-            context->enums.PushBack(cpp_enum);
-        }
+        VisitEnum(cursor, *context);
+    }
+    else if (kind == CXCursor_ClassDecl || kind == CXCursor_StructDecl)
+    {
+        VisitClass(cursor, *context);
     }
 
     return CXChildVisit_Recurse;
