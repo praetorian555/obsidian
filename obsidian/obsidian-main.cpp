@@ -560,11 +560,7 @@ CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXInd
     printf("\n");
     CXTranslationUnit translation_unit = clang_parseTranslationUnit(index, input_file.GetData(), args_array.GetData(), args_array.GetSize(),
                                                                     nullptr, 0, CXTranslationUnit_DetailedPreprocessingRecord);
-    if (translation_unit == nullptr)
-    {
-        printf("Failed to parse translation_unit\n");
-        exit(1);
-    }
+    // TODO: Check diagnostics messages and fail the compilation if there are errors
     return translation_unit;
 }
 
@@ -572,6 +568,11 @@ void ProcessTranslationUnit(CppContext& context, CXIndex index)
 {
     auto compile_options = Opal::ArrayView<Opal::StringUtf8>{context.arguments.compile_options};
     CXTranslationUnit translation_unit = ParseTranslationUnit(context.arguments.input_file, index, compile_options);
+    if (translation_unit == nullptr)
+    {
+        printf("Failed to compile %s", context.arguments.input_file.GetData());
+        exit(1);
+    }
     CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
     clang_visitChildren(cursor, Visitor, &context);
     clang_disposeTranslationUnit(translation_unit);
