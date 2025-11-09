@@ -23,6 +23,8 @@ struct CppAttribute
 struct CppEnum
 {
     Opal::StringUtf8 name;
+    Opal::StringUtf8 full_name;
+    Opal::StringUtf8 scope;
     Opal::StringUtf8 description;
     Opal::StringUtf8 underlying_type;
     bool is_enum_class = false;
@@ -69,6 +71,22 @@ bool StartsWith(const Opal::StringUtf8& str, const Opal::StringUtf8& prefix)
         }
     }
     return true;
+}
+
+void CollectScope(const CXCursor& cursor, Opal::DynamicArray<Opal::StringUtf8>& parents)
+{
+    CXCursor it = cursor;
+    while (true)
+    {
+        CXCursor parent = clang_getCursorSemanticParent(it);
+        if (clang_Cursor_isNull(parent) || clang_getCursorKind(parent) == CXCursor_TranslationUnit)
+        {
+            break;
+        }
+        Opal::StringUtf8 parent_name = ToString(clang_getCursorSpelling(parent));
+        parents.PushBack(Opal::Move(parent_name));
+        it = parent;
+    }
 }
 
 void CollectAttributes(const Opal::ArrayView<CXToken>& tokens, const CXTranslationUnit& translation_unit,
@@ -195,8 +213,6 @@ CXChildVisitResult Visitor(CXCursor cursor, CXCursor parent, CXClientData client
         Opal::u32 line, column, offset;
         clang_getSpellingLocation(start, &file, &line, &column, &offset);
 
-        constexpr Opal::i32 k_go_back_bytes = 200;
-
         const auto prev_line = static_cast<Opal::u32>(Opal::Max(0, static_cast<Opal::i32>(line) - 1));
         CXSourceLocation new_start = clang_getLocation(translation_unit, file, prev_line, 1);
         CXSourceRange extended_range = clang_getRange(new_start, clang_getRangeEnd(tu_range));
@@ -214,6 +230,21 @@ CXChildVisitResult Visitor(CXCursor cursor, CXCursor parent, CXClientData client
             cpp_enum.is_enum_class = clang_EnumDecl_isScoped(cursor) != 0;
             CollectAttributes({tokens.GetData() + 1, tokens.GetSize() - 1}, translation_unit, cpp_enum.attributes);
             clang_visitChildren(cursor, VisitorEnumConstant, &cpp_enum);
+
+            Opal::DynamicArray<Opal::StringUtf8> parents;
+            CollectScope(cursor, parents);
+            Opal::StringUtf8 scope;
+            for (Opal::i32 i = static_cast<Opal::i32>(parents.GetSize()) - 1; i >= 0; i--)
+            {
+                scope += parents[i] + "::";
+            }
+            if (!scope.IsEmpty())
+            {
+                scope = Opal::GetSubString(scope, 0, scope.GetSize() - 2).GetValue();
+            }
+            cpp_enum.full_name = scope + "::" + cpp_enum.name;
+            cpp_enum.scope = Opal::Move(scope);
+
             context->enums.PushBack(cpp_enum);
         }
     }
@@ -260,6 +291,8 @@ int main(int argc, char** argv)
     for (Opal::i32 i = 0; i < context.enums.GetSize(); i++)
     {
         printf("\t%s:\n", context.enums[i].name.GetData());
+        printf("\t\tFull Name: %s\n", context.enums[i].full_name.GetData());
+        printf("\t\tScope: %s\n", context.enums[i].scope.GetData());
         printf("\t\tUnderlying Type: %s\n", context.enums[i].underlying_type.GetData());
         printf("\t\tIs Enum Class: %s\n", context.enums[i].is_enum_class ? "Yes" : "No");
         printf("\t\tDescription: %s\n", context.enums[i].description.GetData());

@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <string>
 
+#include "test-types.hpp"
+
 #if !defined(DONT_CRASH)
 #error This should not happen!
 #endif
@@ -10,8 +12,21 @@
 namespace FirstNamespace
 {
 
+OBS_ENUM()
+enum DayOfWeek
+{
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday,
+};
+
 // This is a vegetable enum.
-enum class [[obs::refl]] Vegetable : int8_t
+OBS_ENUM()
+enum class Vegetable : int8_t
 {
     /** This is carrot. */
     Carrot = -10,
@@ -25,7 +40,8 @@ namespace SecondNamespace
 /**
  * This is a fruit enum.
  */
-enum class [[obs::refl]] Fruit
+OBS_ENUM()
+enum class Fruit
 {
     Apple = 5,
     /** This is orange. */
@@ -37,28 +53,30 @@ using namespace std;
 /**
  * This is a test struct.
  */
-struct [[obs::refl]] DataStruct
+OBS_CLASS()
+struct DataStruct
 {
-    enum class [[obs::refl]] DataType : int16_t
+    OBS_ENUM()
+    enum class DataType : int16_t
     {
         A,
         B,
         C
     };
 
-    [[obs::refl]]
+    OBS_PROP()
     int32_t a = 1;
 
-    [[obs::refl]]
+    OBS_PROP()
     float b = 5.0f;
 
-    [[obs::refl]]
+    OBS_PROP()
     const char * c = "this is test";
 
-    [[obs::refl]]
+    OBS_PROP()
     DataType d = DataType::A;
 
-    [[obs::refl]]
+    OBS_PROP()
     string e = "this is test";
 };
 

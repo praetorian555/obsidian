@@ -1,6 +1,8 @@
 #pragma once
 
 #define OBS_ENUM(...)
+#define OBS_CLASS(...)
+#define OBS_PROP(...)
 
 /// This  is an enum about fruit.
 OBS_ENUM("serialize", "test=1")
