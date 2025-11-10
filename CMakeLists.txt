@@ -59,7 +59,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(opal)
 
-add_executable(obsidian obsidian/obsidian-main.cpp)
+add_executable(obsidian obsidian/obsidian-main.cpp obsidian/types.hpp)
 target_compile_features(obsidian PRIVATE cxx_std_20)
 target_link_libraries(obsidian PRIVATE ${OBS_LLVM_PATH}/lib/libclang.lib opal)
 target_include_directories(obsidian PRIVATE ${OBS_LLVM_PATH}/include)

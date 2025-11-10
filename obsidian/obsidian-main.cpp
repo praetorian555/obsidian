@@ -1,140 +1,16 @@
-#include <complex>
 #include <cstdio>
 #include <cstdlib>
 
-#include "opal/container/dynamic-array.h"
-#include "opal/container/string.h"
 #include "opal/math-base.h"
 #include "opal/paths.h"
 
-#include "clang-c/Index.h"
-
-struct CppEnumConstant
-{
-    Opal::StringUtf8 name;
-    Opal::StringUtf8 description;
-    Opal::i64 value = -1;
-};
-
-struct CppAttribute
-{
-    Opal::StringUtf8 name;
-    Opal::StringUtf8 value;
-};
-
-struct CppEnum
-{
-    Opal::StringUtf8 name;
-    Opal::StringUtf8 full_name;
-    Opal::StringUtf8 scope;
-    Opal::StringUtf8 description;
-    Opal::StringUtf8 underlying_type;
-    bool is_enum_class = false;
-    Opal::DynamicArray<CppEnumConstant> constants;
-    Opal::DynamicArray<CppAttribute> attributes;
-};
-
-struct CppProperty
-{
-    Opal::StringUtf8 name;
-    Opal::StringUtf8 type;
-    Opal::StringUtf8 description;
-    Opal::i64 alignment = 0;
-    Opal::i64 offset = 0;
-    Opal::DynamicArray<CppAttribute> attributes;
-};
-
-struct CppClass
-{
-    Opal::StringUtf8 name;
-    Opal::StringUtf8 full_name;
-    Opal::StringUtf8 scope;
-    Opal::StringUtf8 description;
-    bool is_struct = false;
-    Opal::i64 alignment = 0;
-    Opal::i64 size = 0;
-    Opal::DynamicArray<CppProperty> properties;
-    Opal::DynamicArray<CppAttribute> attributes;
-};
-
-struct ProgramArguments
-{
-    Opal::StringUtf8 input_file;
-    Opal::StringUtf8 input_dir;
-    Opal::StringUtf8 output_dir;
-    Opal::DynamicArray<Opal::StringUtf8> compile_options;
-    bool should_dump_ast = false;
-    bool use_separate_files = false;
-};
-
-struct CppContext
-{
-    ProgramArguments arguments;
-    Opal::DynamicArray<CppEnum> enums;
-    Opal::DynamicArray<CppClass> classes;
-};
-
-struct CppTokens
-{
-    CXToken* data = nullptr;
-    Opal::u32 count = 0;
-    CXTranslationUnit translation_unit;
-
-    CppTokens(CXTranslationUnit in_tu, CXToken* in_data, Opal::u32 in_count) : data(in_data), count(in_count), translation_unit(in_tu) {}
-
-    ~CppTokens() { clang_disposeTokens(translation_unit, data, count); }
-};
+#include "types.hpp"
 
 Opal::StringUtf8 ToString(const CXString& clang_str)
 {
     Opal::StringUtf8 str = clang_getCString(clang_str);
     clang_disposeString(clang_str);
     return str;
-}
-
-bool Split(const Opal::StringUtf8& in, Opal::StringUtf8& name, Opal::StringUtf8& value)
-{
-    Opal::StringUtf8::size_type pos = Opal::Find(in, "=");
-    if (pos == Opal::StringUtf8::k_npos)
-    {
-        name = in;
-        return false;
-    }
-    name = Opal::GetSubString(in, 0, pos).GetValue();
-    value = Opal::GetSubString(in, pos + 1, Opal::StringUtf8::k_npos).GetValue();
-    return true;
-}
-
-void SplitToArray(const Opal::StringUtf8& in, Opal::DynamicArray<Opal::StringUtf8>& out, const Opal::StringUtf8& delimiter)
-{
-    Opal::StringUtf8::size_type start_pos = 0;
-    while (true)
-    {
-        Opal::StringUtf8::size_type pos = Opal::Find(in, delimiter, start_pos);
-        if (pos == Opal::StringUtf8::k_npos)
-        {
-            out.PushBack(Opal::GetSubString(in, start_pos, Opal::StringUtf8::k_npos).GetValue());
-            break;
-        }
-        out.PushBack(Opal::GetSubString(in, start_pos, pos - start_pos).GetValue());
-        start_pos = pos + 1;
-    }
-}
-
-bool StartsWith(const Opal::StringUtf8& str, const Opal::StringUtf8& prefix)
-{
-    if (prefix.GetSize() > str.GetSize())
-    {
-        return false;
-    }
-    for (Opal::i32 i = 0; i < prefix.GetSize(); i++)
-    {
-        if (prefix[i] != str[i])
-        {
-            return false;
-        }
-    }
-    return true;
 }
 
 CppTokens GetPrevTokens(const CXTranslationUnit& translation_unit, const CXCursor& cursor)
@@ -208,12 +84,12 @@ void CollectAttributes(const Opal::ArrayView<CXToken>& tokens, const CXTranslati
                 if (token_kind == CXToken_Literal)
                 {
                     Opal::StringUtf8 parameter = ToString(clang_getTokenSpelling(translation_unit, tokens[i]));
-                    if (StartsWith(parameter, "\""))
+                    if (StartsWith<Opal::StringUtf8>(parameter, "\""))
                     {
                         parameter = Opal::GetSubString(parameter, 1, parameter.GetSize() - 2).GetValue();
                     }
                     CppAttribute attribute;
-                    Split(parameter, attribute.name, attribute.value);
+                    Opal::Split<Opal::StringUtf8>(parameter, "=", attribute.name, attribute.value);
                     if (attribute.value.IsEmpty())
                     {
                         attribute.value = "1";
@@ -482,7 +358,7 @@ void ParseArguments(int argc, char** argv, ProgramArguments& arguments)
             if (i < argc)
             {
                 Opal::StringUtf8 options = argv[i];
-                SplitToArray(options, arguments.compile_options, " ");
+                SplitToArray<Opal::StringUtf8>(options, " ", arguments.compile_options );
             }
             else
             {
