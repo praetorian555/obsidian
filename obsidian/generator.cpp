@@ -40,7 +40,7 @@ static Opal::StringUtf8 DeterminePropertyType(const Opal::StringUtf8& type_name)
     {
         return "Type::Pointer";
     }
-    if (Opal::Find<Opal::StringUtf8>(type_name, "basic_string") != Opal::StringUtf8::k_npos)
+    if (Opal::Find<Opal::StringUtf8>(type_name, "string") != Opal::StringUtf8::k_npos)
     {
         return "Type::String";
     }
