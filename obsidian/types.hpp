@@ -69,7 +69,7 @@ struct CppClass
     Opal::DynamicArray<CppAttribute> attributes;
 };
 
-struct ProgramArguments
+struct ObsidianArguments
 {
     Opal::StringUtf8 input_file;
     Opal::StringUtf8 input_dir;
@@ -81,7 +81,7 @@ struct ProgramArguments
 
 struct CppContext
 {
-    ProgramArguments arguments;
+    ObsidianArguments arguments;
     Opal::DynamicArray<CppEnum> enums;
     Opal::DynamicArray<CppClass> classes;
 };

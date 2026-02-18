@@ -1,9 +1,10 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include "opal/file-system.h"
 #include "opal/math-base.h"
 #include "opal/paths.h"
-#include "opal/file-system.h"
+#include "opal/program-arguments.h"
 
 #include "clang-c/Index.h"
 
@@ -291,106 +292,6 @@ CXChildVisitResult Visitor(CXCursor cursor, CXCursor parent, CXClientData client
     return CXChildVisit_Recurse;
 }
 
-void ParseArguments(int argc, char** argv, ProgramArguments& arguments)
-{
-    Opal::StringUtf8 arg;
-    arg.Reserve(1024);
-    for (int i = 1; i < argc; i++)
-    {
-        arg = argv[i];
-        if (arg == "-input-file")
-        {
-            if (!arguments.input_dir.IsEmpty())
-            {
-                printf("Error: You must specify either input directory or input file, not both\n");
-                exit(1);
-            }
-            i++;
-            if (i < argc)
-            {
-                arguments.input_file = argv[i];
-                if (!Opal::Exists(arguments.input_file))
-                {
-                    printf("Error: Input file does not exist\n");
-                    exit(1);
-                }
-            }
-            else
-            {
-                printf("Error: Missing input file\n");
-                exit(1);
-            }
-        }
-        else if (arg == "-input-dir")
-        {
-            if (!arguments.input_dir.IsEmpty())
-            {
-                printf("Error: You must specify either input directory or input file, not both\n");
-                exit(1);
-            }
-            i++;
-            if (i < argc)
-            {
-                arguments.input_dir = argv[i];
-                if (!Opal::Exists(arguments.input_dir))
-                {
-                    printf("Error: Input directory does not exist\n");
-                    exit(1);
-                }
-            }
-            else
-            {
-                printf("Error: No input directory specified\n");
-                exit(1);
-            }
-        }
-        else if (arg == "-output-dir")
-        {
-            i++;
-            if (i < argc)
-            {
-                arguments.output_dir = argv[i];
-                if (!Opal::Exists(arguments.output_dir))
-                {
-                    printf("Error: Input directory does not exist\n");
-                    exit(1);
-                }
-            }
-            else
-            {
-                printf("Error: No output directory specified\n");
-                exit(1);
-            }
-        }
-        else if (arg == "-dump-ast")
-        {
-            arguments.should_dump_ast = true;
-        }
-        else if (arg == "-separate-files")
-        {
-            arguments.use_separate_files = true;
-        }
-        else if (arg == "-compile-options")
-        {
-            i++;
-            if (i < argc)
-            {
-                Opal::StringUtf8 options = argv[i];
-                SplitToArray<Opal::StringUtf8>(options, " ", arguments.compile_options);
-            }
-            else
-            {
-                printf("Error: Missing compile options\n");
-                exit(1);
-            }
-        }
-        else if (arg == "-help")
-        {
-            // TODO: Print help
-        }
-    }
-}
-
 void DumpAst(const CppContext& context)
 {
     printf("Enums:\n");
@@ -472,11 +373,8 @@ void ProcessTranslationUnit(CppContext& context, CXIndex index)
     clang_disposeTranslationUnit(translation_unit);
 }
 
-int main(int argc, char** argv)
+void Run(ObsidianArguments& arguments)
 {
-    ProgramArguments arguments;
-    ParseArguments(argc, argv, arguments);
-
     CXIndex index = clang_createIndex(0, 0);
 
     CppContext context{.arguments = arguments};
@@ -498,12 +396,63 @@ int main(int argc, char** argv)
     {
         if (!Generate(context))
         {
-            printf("Error: Code generation failed!\n");
             clang_disposeIndex(index);
-            return 1;
+            throw Opal::Exception("Failed to generate reflection data");
+            return;
         }
     }
 
     clang_disposeIndex(index);
+}
+
+int main(int argc, const char** argv)
+{
+    ObsidianArguments arguments;
+    Opal::ProgramArgumentsBuilder builder;
+    builder.AddProgramDescription("Obsidian - C++ reflection code generation tool")
+        .AddUsageExample("obsidian input-file=my_types.hpp output-dir=generated compile-options=\"-I/usr/include,-DMY_DEFINE\"")
+        .AddArgumentDefinition(arguments.input_file, {"input-file", "Path to a single input header file", true})
+        .AddArgumentDefinition(arguments.input_dir, {"input-dir", "Path to a directory with input header files", true})
+        .AddArgumentDefinition(arguments.output_dir, {"output-dir", "Path to the output directory for generated headers", true})
+        .AddArgumentDefinition(arguments.should_dump_ast, {"dump-ast", "Dump the extracted AST metadata", true})
+        .AddArgumentDefinition(arguments.use_separate_files, {"separate-files", "Generate separate files for each type", true})
+        .AddArgumentDefinition(arguments.compile_options, {"compile-options", "Comma-separated list of compile options", true});
+
+    if (!builder.Build(argv, static_cast<Opal::u32>(argc)))
+    {
+        printf("Failed to build program arguments\n");
+        return 1;
+    }
+
+    if (!arguments.input_file.IsEmpty() && !arguments.input_dir.IsEmpty())
+    {
+        printf("Error: You must specify either input-file or input-dir, not both\n");
+        return 1;
+    }
+    if (!arguments.input_file.IsEmpty() && !Opal::Exists(arguments.input_file))
+    {
+        printf("Error: Input file does not exist\n");
+        return 1;
+    }
+    if (!arguments.input_dir.IsEmpty() && !Opal::Exists(arguments.input_dir))
+    {
+        printf("Error: Input directory does not exist\n");
+        return 1;
+    }
+    if (!arguments.output_dir.IsEmpty() && !Opal::Exists(arguments.output_dir))
+    {
+        printf("Error: Output directory does not exist\n");
+        return 1;
+    }
+
+    try
+    {
+        Run(arguments);
+    }
+    catch (const Opal::Exception& e)
+    {
+        std::printf("%s", *e.What());
+        return 1;
+    }
     return 0;
 }

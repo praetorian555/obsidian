@@ -23,9 +23,9 @@ add_custom_target(
         generate_reflection
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/include
         COMMAND $<TARGET_FILE:obsidian>
-            -input-file ${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
-            -output-dir ${CMAKE_CURRENT_BINARY_DIR}/include
-            -compile-options "-DDONT_CRASH -I${CMAKE_CURRENT_SOURCE_DIR}/include -I${CMAKE_SOURCE_DIR}/include"
+            input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+            output-dir=${CMAKE_CURRENT_BINARY_DIR}/include
+            compile-options=-DDONT_CRASH,-I${CMAKE_CURRENT_SOURCE_DIR}/include,-I${CMAKE_SOURCE_DIR}/include
         DEPENDS obsidian
         COMMENT "Generating reflection headers..."
         VERBATIM
