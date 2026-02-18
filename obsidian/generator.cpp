@@ -240,10 +240,17 @@ static Opal::StringUtf8 GenerateSingleFile(const CppContext& context)
 
     // Generate includes
     Opal::StringUtf8 includes;
-    auto filename = Opal::Paths::GetFileName(context.arguments.input_file);
-    if (filename.HasValue())
+    for (Opal::u64 i = 0; i < context.input_files.GetSize(); i++)
     {
-        includes = "#include \"" + filename.GetValue() + "\"";
+        auto filename = Opal::Paths::GetFileName(context.input_files[i]);
+        if (filename.HasValue())
+        {
+            if (!includes.IsEmpty())
+            {
+                includes += "\n";
+            }
+            includes += "#include \"" + filename.GetValue() + "\"";
+        }
     }
     result = ReplaceAll(result, "__refl_includes__", includes);
 

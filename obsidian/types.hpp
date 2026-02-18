@@ -85,6 +85,7 @@ struct ObsidianArguments
 struct CppContext
 {
     ObsidianArguments arguments;
+    Opal::DynamicArray<Opal::StringUtf8> input_files;
     Opal::DynamicArray<CppEnum> enums;
     Opal::DynamicArray<CppClass> classes;
 };

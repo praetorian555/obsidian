@@ -39,5 +39,26 @@ target_include_directories(test-cpp-project PRIVATE include ${CMAKE_CURRENT_BINA
 target_include_directories(test-cpp-project PRIVATE third-party/catch2/include)
 target_include_directories(test-cpp-project PRIVATE third-party/catch2/include/catch2)
 
+add_custom_target(
+        generate_reflection_dir
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/include-dir
+        COMMAND $<TARGET_FILE:obsidian>
+            input-dir=${CMAKE_CURRENT_SOURCE_DIR}/include
+            output-dir=${CMAKE_CURRENT_BINARY_DIR}/include-dir
+            compile-options=-DDONT_CRASH,-I${CMAKE_CURRENT_SOURCE_DIR}/include,-I${CMAKE_SOURCE_DIR}/include
+        DEPENDS obsidian
+        COMMENT "Generating reflection headers using input-dir..."
+        VERBATIM
+)
+
+add_executable(test-cpp-project-dir src/main.cpp src/secondary.cpp include/types.hpp third-party/catch2/src/catch_amalgamated.cpp)
+add_dependencies(test-cpp-project-dir warnings options generate_reflection_dir)
+target_compile_features(test-cpp-project-dir PRIVATE cxx_std_20)
+target_compile_definitions(test-cpp-project-dir PRIVATE CATCH_AMALGAMATED_CUSTOM_MAIN DONT_CRASH)
+target_include_directories(test-cpp-project-dir PRIVATE include ${CMAKE_CURRENT_BINARY_DIR}/include-dir ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(test-cpp-project-dir PRIVATE third-party/catch2/include)
+target_include_directories(test-cpp-project-dir PRIVATE third-party/catch2/include/catch2)
+
 enable_testing()
 add_test(NAME cpp_test COMMAND test-cpp-project)
+add_test(NAME cpp_test_dir COMMAND test-cpp-project-dir)

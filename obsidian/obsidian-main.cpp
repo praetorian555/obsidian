@@ -392,13 +392,13 @@ struct TranslationFailedException : Opal::Exception
     }
 };
 
-void ProcessTranslationUnit(CppContext& context, CXIndex index)
+void ProcessTranslationUnit(CppContext& context, CXIndex index, const Opal::StringUtf8& input_file)
 {
     auto compile_options = Opal::ArrayView<Opal::StringUtf8>{context.arguments.compile_options};
-    CXTranslationUnit translation_unit = ParseTranslationUnit(context.arguments.input_file, index, compile_options);
+    CXTranslationUnit translation_unit = ParseTranslationUnit(input_file, index, compile_options);
     if (translation_unit == nullptr)
     {
-        throw TranslationFailedException(context.arguments.input_file);
+        throw TranslationFailedException(input_file);
     }
     CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
     clang_visitChildren(cursor, Visitor, &context);
@@ -412,11 +412,28 @@ void Run(ObsidianArguments& arguments)
     CppContext context{.arguments = arguments};
     if (!arguments.input_file.IsEmpty())
     {
-        ProcessTranslationUnit(context, index);
+        ProcessTranslationUnit(context, index, arguments.input_file);
+        context.input_files.PushBack(arguments.input_file);
     }
     else if (!arguments.input_dir.IsEmpty())
     {
-        // TODO: Handle search for the header files
+        Opal::DynamicArray<Opal::DirectoryEntry> entries =
+            Opal::CollectDirectoryContents(arguments.input_dir, {.include_directories = false, .recursive = true});
+        for (Opal::u64 i = 0; i < entries.GetSize(); i++)
+        {
+            auto ext = Opal::Paths::GetExtension(entries[i].path);
+            if (!ext.HasValue())
+            {
+                continue;
+            }
+            if (ext.GetValue() != ".h" && ext.GetValue() != ".hpp")
+            {
+                continue;
+            }
+            printf("Processing file: %s\n", entries[i].path.GetData());
+            ProcessTranslationUnit(context, index, entries[i].path);
+            context.input_files.PushBack(entries[i].path);
+        }
     }
 
     if (context.arguments.should_dump_ast)
