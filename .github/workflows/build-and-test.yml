@@ -18,6 +18,9 @@ jobs:
         include:
           - configuration: Debug
             hardening: ON
+        exclude:
+          - configuration: Debug
+            hardening: OFF
 
     steps:
     - name: Checkout source
