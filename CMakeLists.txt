@@ -3,8 +3,10 @@ project(OBSIDIAN VERSION 0.1.0 LANGUAGES CXX)
 
 option(OBS_LLVM_PATH "Root path where LLVM binaries and libraries are installed" "")
 message(STATUS "OBS_LLVM_PATH: ${OBS_LLVM_PATH}")
-option(OBS_HARDENING "Enable hardening options" ON)
+option(OBS_HARDENING "Enable hardening options" OFF)
 message(STATUS "OBS_HARDENING: ${OBS_HARDENING}")
+option(OBS_BUILD_TESTS "Build test targets" OFF)
+message(STATUS "OBS_BUILD_TESTS: ${OBS_BUILD_TESTS}")
 
 if (NOT OBS_LLVM_PATH)
     message(FATAL_ERROR "LLVM root path not specified. Please specify the path like this: -DOBS_LLVM_PATH=<path-to-llvm>...")
@@ -79,4 +81,6 @@ add_custom_command(TARGET obsidian PRE_BUILD
         COMMENT "Copying libclang.dll to output directory"
 )
 
-add_subdirectory(test-cpp)
+if (OBS_BUILD_TESTS)
+    add_subdirectory(test-cpp)
+endif ()

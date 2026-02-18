@@ -37,7 +37,8 @@ cmake --build build
 | Option | Default | Description |
 |---|---|---|
 | `OBS_LLVM_PATH` | *(required)* | Path to LLVM/Clang installation |
-| `OBS_HARDENING` | `ON` | Enable AddressSanitizer and UndefinedBehaviorSanitizer |
+| `OBS_HARDENING` | `OFF` | Enable AddressSanitizer and UndefinedBehaviorSanitizer |
+| `OBS_BUILD_TESTS` | `OFF` | Build the test targets |
 
 ## Usage
 
