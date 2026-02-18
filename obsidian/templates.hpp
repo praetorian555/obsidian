@@ -51,21 +51,16 @@ __refl_enum_collection__
 
 #pragma endregion
 
-enum class Type
-{
-    POD,
-    Pointer,
-    String
-};
-
 struct Property
 {
     const char* name;
     const char* description;
     const char* type_name;
-    Type type_enum;
+    bool is_pod;
     int offset;
     int size;
+    void (*read)(const void* obj, void* out);
+    void (*write)(void* obj, const void* in);
 };
 
 struct ClassEntry
@@ -190,16 +185,7 @@ struct Class<__class_scoped_name__>
         {
             if (strcmp(prop.name, property_name) == 0)
             {
-                if (prop.type_enum == Type::String)
-                {
-                    std::string& out = *reinterpret_cast<std::string*>(out_value);
-                    std::string& in = *reinterpret_cast<std::string*>((char*)object + prop.offset);
-                    out = in;
-                }
-                else
-                {
-                    memcpy(out_value, (char*)object + prop.offset, prop.size);
-                }
+                prop.read(object, out_value);
                 return true;
             }
         }
@@ -214,19 +200,9 @@ struct Class<__class_scoped_name__>
         }
         for (auto& prop : Get())
         {
-
             if (strcmp(prop.name, property_name) == 0)
             {
-                if (prop.type_enum == Type::String)
-                {
-                    std::string& in = *reinterpret_cast<std::string*>(value);
-                    std::string& out = *reinterpret_cast<std::string*>((char*)object + prop.offset);
-                    out = in;
-                }
-                else
-                {
-                    memcpy((char*)object + prop.offset, value, prop.size);
-                }
+                prop.write(object, value);
                 return true;
             }
         }
@@ -340,16 +316,7 @@ constexpr const char* k_class_collection_template = R"(struct ClassCollection
         {
             return false;
         }
-        if (prop.type_enum == Type::String)
-        {
-            std::string& out = *reinterpret_cast<std::string*>(out_value);
-            std::string& in = *reinterpret_cast<std::string*>((char*)object + prop.offset);
-            out = in;
-        }
-        else
-        {
-            memcpy(out_value, (char*)object + prop.offset, prop.size);
-        }
+        prop.read(object, out_value);
         return true;
     }
 
@@ -382,16 +349,7 @@ constexpr const char* k_class_collection_template = R"(struct ClassCollection
         {
             return false;
         }
-        if (prop.type_enum == Type::String)
-        {
-            std::string& in = *reinterpret_cast<std::string*>(value);
-            std::string& out = *reinterpret_cast<std::string*>((char*)object + prop.offset);
-            out = in;
-        }
-        else
-        {
-            memcpy((char*)object + prop.offset, value, prop.size);
-        }
+        prop.write(object, value);
         return true;
     }
 

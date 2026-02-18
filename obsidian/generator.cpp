@@ -34,19 +34,6 @@ static Opal::StringUtf8 IntToString(Opal::i64 value)
     return Opal::StringUtf8(buffer);
 }
 
-static Opal::StringUtf8 DeterminePropertyType(const Opal::StringUtf8& type_name)
-{
-    if (Opal::Find<Opal::StringUtf8>(type_name, "*") != Opal::StringUtf8::k_npos)
-    {
-        return "Type::Pointer";
-    }
-    if (Opal::Find<Opal::StringUtf8>(type_name, "string") != Opal::StringUtf8::k_npos)
-    {
-        return "Type::String";
-    }
-    return "Type::POD";
-}
-
 static bool WriteToFile(const Opal::StringUtf8& path, const Opal::StringUtf8& content)
 {
     FILE* file = fopen(path.GetData(), "w");
@@ -147,10 +134,16 @@ static Opal::StringUtf8 GenerateClassSpecialization(const CppClass& cpp_class)
         {
             properties += ", ";
         }
+        Opal::StringUtf8 is_pod_str = prop.is_pod ? "true" : "false";
         Opal::StringUtf8 offset_expr = "offsetof(" + cpp_class.full_name + ", " + prop.name + ")";
         Opal::StringUtf8 size_expr = "sizeof(std::declval<" + prop.full_type + ">())";
-        properties += "{\"" + prop.name + "\", \"" + prop.description + "\", \"" + prop.type + "\", " + DeterminePropertyType(prop.type)
-                      + ", " + offset_expr + ", " + size_expr + "}";
+        Opal::StringUtf8 member_type = "decltype(" + cpp_class.full_name + "::" + prop.name + ")";
+        Opal::StringUtf8 read_lambda = "[](const void* obj, void* out) { *static_cast<" + member_type
+                                        + "*>(out) = static_cast<const " + cpp_class.full_name + "*>(obj)->" + prop.name + "; }";
+        Opal::StringUtf8 write_lambda = "[](void* obj, const void* in) { static_cast<" + cpp_class.full_name
+                                         + "*>(obj)->" + prop.name + " = *static_cast<const " + member_type + "*>(in); }";
+        properties += "{\"" + prop.name + "\", \"" + prop.description + "\", \"" + prop.type + "\", " + is_pod_str
+                      + ", " + offset_expr + ", " + size_expr + ", " + read_lambda + ", " + write_lambda + "}";
     }
     properties += "}";
     result = ReplaceAll(result, "__class_init_properties__", properties);
@@ -222,10 +215,16 @@ static Opal::StringUtf8 GenerateClassCollection(const Opal::DynamicArray<CppClas
             {
                 entries += ", ";
             }
+            Opal::StringUtf8 is_pod_str = prop.is_pod ? "true" : "false";
             Opal::StringUtf8 offset_expr = "offsetof(" + cpp_class.full_name + ", " + prop.name + ")";
             Opal::StringUtf8 size_expr = "sizeof(std::declval<" + prop.full_type + ">())";
-            entries += "{\"" + prop.name + "\", \"" + prop.description + "\", \"" + prop.type + "\", " + DeterminePropertyType(prop.type)
-                       + ", " + offset_expr + ", " + size_expr + "}";
+            Opal::StringUtf8 member_type = "decltype(" + cpp_class.full_name + "::" + prop.name + ")";
+            Opal::StringUtf8 read_lambda = "[](const void* obj, void* out) { *static_cast<" + member_type
+                                            + "*>(out) = static_cast<const " + cpp_class.full_name + "*>(obj)->" + prop.name + "; }";
+            Opal::StringUtf8 write_lambda = "[](void* obj, const void* in) { static_cast<" + cpp_class.full_name
+                                             + "*>(obj)->" + prop.name + " = *static_cast<const " + member_type + "*>(in); }";
+            entries += "{\"" + prop.name + "\", \"" + prop.description + "\", \"" + prop.type + "\", " + is_pod_str
+                       + ", " + offset_expr + ", " + size_expr + ", " + read_lambda + ", " + write_lambda + "}";
         }
         entries += "}}";
     }
