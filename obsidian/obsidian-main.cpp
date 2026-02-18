@@ -3,7 +3,9 @@
 
 #include "opal/math-base.h"
 #include "opal/paths.h"
+#include "opal/file-system.h"
 
+#include "templates.hpp"
 #include "types.hpp"
 
 Opal::StringUtf8 ToString(const CXString& clang_str)
@@ -291,7 +293,7 @@ void ParseArguments(int argc, char** argv, ProgramArguments& arguments)
             if (i < argc)
             {
                 arguments.input_file = argv[i];
-                if (!Opal::Paths::Exists(arguments.input_file))
+                if (!Opal::Exists(arguments.input_file))
                 {
                     printf("Error: Input file does not exist\n");
                     exit(1);
@@ -314,7 +316,7 @@ void ParseArguments(int argc, char** argv, ProgramArguments& arguments)
             if (i < argc)
             {
                 arguments.input_dir = argv[i];
-                if (!Opal::Paths::Exists(arguments.input_dir))
+                if (!Opal::Exists(arguments.input_dir))
                 {
                     printf("Error: Input directory does not exist\n");
                     exit(1);
@@ -332,7 +334,7 @@ void ParseArguments(int argc, char** argv, ProgramArguments& arguments)
             if (i < argc)
             {
                 arguments.output_dir = argv[i];
-                if (!Opal::Paths::Exists(arguments.output_dir))
+                if (!Opal::Exists(arguments.output_dir))
                 {
                     printf("Error: Input directory does not exist\n");
                     exit(1);
@@ -358,7 +360,7 @@ void ParseArguments(int argc, char** argv, ProgramArguments& arguments)
             if (i < argc)
             {
                 Opal::StringUtf8 options = argv[i];
-                SplitToArray<Opal::StringUtf8>(options, " ", arguments.compile_options );
+                SplitToArray<Opal::StringUtf8>(options, " ", arguments.compile_options);
             }
             else
             {
