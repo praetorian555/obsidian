@@ -31,7 +31,7 @@ add_custom_target(
         VERBATIM
 )
 
-add_executable(test-cpp-project src/main.cpp src/secondary.cpp include/types.hpp third-party/catch2/src/catch_amalgamated.cpp)
+add_executable(test-cpp-project src/main-test.cpp src/secondary-test.cpp include/types.hpp third-party/catch2/src/catch_amalgamated.cpp)
 add_dependencies(test-cpp-project warnings options generate_reflection)
 target_compile_features(test-cpp-project PRIVATE cxx_std_20)
 target_compile_definitions(test-cpp-project PRIVATE CATCH_AMALGAMATED_CUSTOM_MAIN DONT_CRASH)
@@ -51,7 +51,7 @@ add_custom_target(
         VERBATIM
 )
 
-add_executable(test-cpp-project-dir src/main.cpp src/secondary.cpp include/types.hpp third-party/catch2/src/catch_amalgamated.cpp)
+add_executable(test-cpp-project-dir src/main-test.cpp src/secondary-test.cpp include/types.hpp third-party/catch2/src/catch_amalgamated.cpp)
 add_dependencies(test-cpp-project-dir warnings options generate_reflection_dir)
 target_compile_features(test-cpp-project-dir PRIVATE cxx_std_20)
 target_compile_definitions(test-cpp-project-dir PRIVATE CATCH_AMALGAMATED_CUSTOM_MAIN DONT_CRASH)
