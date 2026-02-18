@@ -59,6 +59,20 @@ static Opal::StringUtf8 QualifiedConstantName(const CppEnum& cpp_enum, const Cpp
     return constant.name;
 }
 
+static Opal::StringUtf8 GenerateAttributeList(const Opal::DynamicArray<CppAttribute>& attributes)
+{
+    Opal::StringUtf8 result;
+    for (Opal::u64 i = 0; i < attributes.GetSize(); i++)
+    {
+        if (i > 0)
+        {
+            result += ", ";
+        }
+        result += "{\"" + attributes[i].name + "\", \"" + attributes[i].value + "\"}";
+    }
+    return result;
+}
+
 static Opal::StringUtf8 GenerateEnumSpecialization(const CppEnum& cpp_enum)
 {
     Opal::StringUtf8 result = ObsTemplates::k_enum_template;
@@ -113,6 +127,9 @@ static Opal::StringUtf8 GenerateEnumSpecialization(const CppEnum& cpp_enum)
     }
     result = ReplaceAll(result, "__enum_name_to_value_switch__", name_to_value);
 
+    // Attributes
+    result = ReplaceAll(result, "__enum_attributes__", GenerateAttributeList(cpp_enum.attributes));
+
     return result;
 }
 
@@ -142,11 +159,15 @@ static Opal::StringUtf8 GenerateClassSpecialization(const CppClass& cpp_class)
                                         + "*>(out) = static_cast<const " + cpp_class.full_name + "*>(obj)->" + prop.name + "; }";
         Opal::StringUtf8 write_lambda = "[](void* obj, const void* in) { static_cast<" + cpp_class.full_name
                                          + "*>(obj)->" + prop.name + " = *static_cast<const " + member_type + "*>(in); }";
+        Opal::StringUtf8 prop_attrs = "{" + GenerateAttributeList(prop.attributes) + "}";
         properties += "{\"" + prop.name + "\", \"" + prop.description + "\", \"" + prop.type + "\", " + is_pod_str
-                      + ", " + offset_expr + ", " + size_expr + ", " + read_lambda + ", " + write_lambda + "}";
+                      + ", " + offset_expr + ", " + size_expr + ", " + read_lambda + ", " + write_lambda + ", " + prop_attrs + "}";
     }
     properties += "}";
     result = ReplaceAll(result, "__class_init_properties__", properties);
+
+    // Attributes
+    result = ReplaceAll(result, "__class_attributes__", GenerateAttributeList(cpp_class.attributes));
 
     return result;
 }
@@ -185,7 +206,7 @@ static Opal::StringUtf8 GenerateEnumCollection(const Opal::DynamicArray<CppEnum>
             }
             entries += "{\"" + constant.name + "\", \"" + constant.description + "\", " + value_str + "}";
         }
-        entries += "}}";
+        entries += "}, {" + GenerateAttributeList(cpp_enum.attributes) + "}}";
     }
     entries += "\n    }";
 
@@ -223,10 +244,11 @@ static Opal::StringUtf8 GenerateClassCollection(const Opal::DynamicArray<CppClas
                                             + "*>(out) = static_cast<const " + cpp_class.full_name + "*>(obj)->" + prop.name + "; }";
             Opal::StringUtf8 write_lambda = "[](void* obj, const void* in) { static_cast<" + cpp_class.full_name
                                              + "*>(obj)->" + prop.name + " = *static_cast<const " + member_type + "*>(in); }";
+            Opal::StringUtf8 prop_attrs = "{" + GenerateAttributeList(prop.attributes) + "}";
             entries += "{\"" + prop.name + "\", \"" + prop.description + "\", \"" + prop.type + "\", " + is_pod_str
-                       + ", " + offset_expr + ", " + size_expr + ", " + read_lambda + ", " + write_lambda + "}";
+                       + ", " + offset_expr + ", " + size_expr + ", " + read_lambda + ", " + write_lambda + ", " + prop_attrs + "}";
         }
-        entries += "}}";
+        entries += "}, {" + GenerateAttributeList(cpp_class.attributes) + "}}";
     }
     entries += "\n    }";
 

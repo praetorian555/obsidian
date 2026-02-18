@@ -44,7 +44,7 @@ cmake --build build
 
 ### 1. Annotate Your Types
 
-Include the `obs/obs.hpp` header and mark types with macros:
+Include the `obs/obs.hpp` header and mark types with macros. You can attach attributes to any macro as comma-separated `"key=value"` string arguments. If you omit the value, it defaults to `"1"`.
 
 ```cpp
 #include "obs/obs.hpp"
@@ -53,7 +53,7 @@ namespace MyGame
 {
 
 /// A character class.
-OBS_ENUM()
+OBS_ENUM("flags")
 enum class CharacterClass : int8_t
 {
     /** The warrior. */
@@ -63,10 +63,10 @@ enum class CharacterClass : int8_t
 };
 
 /// Player character data.
-OBS_CLASS()
+OBS_CLASS("serializable")
 struct Character
 {
-    OBS_PROP()
+    OBS_PROP("min=0", "max=100")
     int32_t health = 100;
 
     OBS_PROP()
@@ -182,6 +182,39 @@ int new_hp = 50;
 Obs::Class<Character>::Write(&new_hp, &player, "health"); // player.health == 50
 ```
 
+**Attributes:**
+
+Attributes are available on enums, classes, properties, and their runtime counterparts (`EnumEntry`, `ClassEntry`, `Property`). Each type provides `HasAttribute` and `GetAttributeValue` member functions.
+
+```cpp
+// Compile-time enum attributes
+Obs::Enum<CharacterClass>::HasAttribute("flags");          // true
+Obs::Enum<CharacterClass>::GetAttributeValue("flags");     // "1"
+Obs::Enum<CharacterClass>::HasAttribute("other");          // false
+Obs::Enum<CharacterClass>::GetAttributeValue("other");     // nullptr
+
+// Compile-time class attributes
+Obs::Class<Character>::HasAttribute("serializable");       // true
+Obs::Class<Character>::GetAttributeValue("serializable");  // "1"
+
+// Property attributes (via iteration)
+for (const auto& prop : Obs::Class<Character>::Get())
+{
+    if (prop.HasAttribute("min"))
+    {
+        printf("%s min=%s max=%s\n", prop.name,
+               prop.GetAttributeValue("min"),    // "0"
+               prop.GetAttributeValue("max"));   // "100"
+    }
+}
+
+// Runtime entry attributes
+const Obs::EnumEntry* entry = nullptr;
+Obs::EnumCollection::GetEnum("CharacterClass", entry);
+entry->HasAttribute("flags");       // true
+entry->GetAttributeValue("flags");  // "1"
+```
+
 **Runtime reflection (string-based lookup):**
 
 ```cpp
@@ -245,7 +278,6 @@ cmake/
 ### Features
 
 - **Separate-files output mode** — The `separate-files` flag is parsed but the code path is not implemented. When enabled, each enum/class should get its own generated header, plus dedicated headers for `EnumCollection` and `ClassCollection`.
-- **Attribute support in code generation** — Attributes are parsed from macro arguments (e.g., `OBS_PROP("min=0" "max=100")`) and stored in the data structures, but the generator does not yet expose them in the generated code.
 - **Clang diagnostic checking** — The parser does not check for Clang compilation errors/warnings after parsing a translation unit. Invalid input files are silently accepted.
 
 ### Missing Tests
@@ -253,7 +285,6 @@ cmake/
 - **`ClassCollection` runtime API** — The runtime class lookup (`GetClassEntry`, `GetClassProperties`, `GetProperty`, `Read`, `Write`) is generated but has no test coverage.
 - **`is_pod` property flag** — Extracted for each property but never asserted in tests.
 - **Property descriptions** — Class property descriptions are generated but not tested.
-- **Macro attributes** — Attribute parsing is implemented but there are no tests for attributes on `OBS_ENUM`, `OBS_CLASS`, or `OBS_PROP`.
 - **`class` vs `struct`** — Only structs are tested. Classes marked with `OBS_CLASS()` are not tested.
 - **Global namespace types** — All test types are in namespaces. Types in the global namespace are not tested.
 - **Empty types** — Enums with no constants and classes with no properties are not tested.

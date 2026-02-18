@@ -119,6 +119,35 @@ TEST_CASE("Enum reflection", "[refl][enum]")
     }
 }
 
+TEST_CASE("Enum attributes", "[refl][enum][attributes]")
+{
+    SECTION("Vegetable has attributes")
+    {
+        using VegEnum = FirstNamespace::Vegetable;
+        const auto& attrs = Obs::Enum<VegEnum>::GetAttributes();
+        REQUIRE(attrs.size() == 1);
+        REQUIRE(strcmp(attrs[0].name, "flags") == 0);
+        REQUIRE(strcmp(attrs[0].value, "1") == 0);
+    }
+    SECTION("DayOfWeek has no attributes")
+    {
+        using DayOfWeekEnum = FirstNamespace::DayOfWeek;
+        const auto& attrs = Obs::Enum<DayOfWeekEnum>::GetAttributes();
+        REQUIRE(attrs.empty());
+    }
+    SECTION("HasAttribute and GetAttributeValue")
+    {
+        using VegEnum = FirstNamespace::Vegetable;
+        using DayOfWeekEnum = FirstNamespace::DayOfWeek;
+
+        REQUIRE(Obs::Enum<VegEnum>::HasAttribute("flags"));
+        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetAttributeValue("flags"), "1") == 0);
+
+        REQUIRE(!Obs::Enum<DayOfWeekEnum>::HasAttribute("flags"));
+        REQUIRE(Obs::Enum<DayOfWeekEnum>::GetAttributeValue("flags") == nullptr);
+    }
+}
+
 TEST_CASE("Enum collection", "[refl][enum-collection]")
 {
     SECTION("Get enum entries")
@@ -291,5 +320,44 @@ TEST_CASE("Class reflection", "[refl][class]")
         int val = 0;
         REQUIRE(!Obs::Class<DataStruct>::Read(&val, &data, "nonexistent"));
         REQUIRE(!Obs::Class<DataStruct>::Write(&val, &data, "nonexistent"));
+    }
+}
+
+TEST_CASE("Class attributes", "[refl][class][attributes]")
+{
+    SECTION("DataStruct has attributes")
+    {
+        const auto& attrs = Obs::Class<DataStruct>::GetAttributes();
+        REQUIRE(attrs.size() == 1);
+        REQUIRE(strcmp(attrs[0].name, "serializable") == 0);
+        REQUIRE(strcmp(attrs[0].value, "1") == 0);
+    }
+    SECTION("HasAttribute and GetAttributeValue")
+    {
+        REQUIRE(Obs::Class<DataStruct>::HasAttribute("serializable"));
+        REQUIRE(strcmp(Obs::Class<DataStruct>::GetAttributeValue("serializable"), "1") == 0);
+
+        REQUIRE(!Obs::Class<DataStruct>::HasAttribute("nonexistent"));
+        REQUIRE(Obs::Class<DataStruct>::GetAttributeValue("nonexistent") == nullptr);
+    }
+    SECTION("Property a has attributes")
+    {
+        auto it = Obs::Class<DataStruct>::Get().begin();
+        REQUIRE(strcmp(it->name, "a") == 0);
+        REQUIRE(it->attributes.size() == 2);
+        REQUIRE(strcmp(it->attributes[0].name, "min") == 0);
+        REQUIRE(strcmp(it->attributes[0].value, "0") == 0);
+        REQUIRE(strcmp(it->attributes[1].name, "max") == 0);
+        REQUIRE(strcmp(it->attributes[1].value, "100") == 0);
+
+        REQUIRE(it->HasAttribute("min"));
+        REQUIRE(strcmp(it->GetAttributeValue("min"), "0") == 0);
+        REQUIRE(strcmp(it->GetAttributeValue("max"), "100") == 0);
+    }
+    SECTION("Property b has no attributes")
+    {
+        auto it = Obs::Class<DataStruct>::Get().begin() + 1;
+        REQUIRE(strcmp(it->name, "b") == 0);
+        REQUIRE(it->attributes.empty());
     }
 }

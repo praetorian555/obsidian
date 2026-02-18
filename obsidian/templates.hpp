@@ -17,6 +17,35 @@ __refl_includes__
 namespace Obs
 {
 
+struct Attribute
+{
+    const char* name;
+    const char* value;
+};
+
+namespace Impl
+{
+
+inline bool HasAttribute(const std::vector<Attribute>& attributes, const char* name)
+{
+    for (const auto& attr : attributes)
+    {
+        if (strcmp(attr.name, name) == 0) return true;
+    }
+    return false;
+}
+
+inline const char* GetAttributeValue(const std::vector<Attribute>& attributes, const char* name)
+{
+    for (const auto& attr : attributes)
+    {
+        if (strcmp(attr.name, name) == 0) return attr.value;
+    }
+    return nullptr;
+}
+
+} // namespace Impl
+
 #pragma region Compile-Time Enum Reflection
 
 template <typename T>
@@ -43,6 +72,10 @@ struct EnumEntry
     const char* description = "";
     int underlying_type_size = 0;
     std::vector<EnumItem> items;
+    std::vector<Attribute> attributes;
+
+    bool HasAttribute(const char* attr_name) const { return Impl::HasAttribute(attributes, attr_name); }
+    const char* GetAttributeValue(const char* attr_name) const { return Impl::GetAttributeValue(attributes, attr_name); }
 };
 
 #pragma region Run-Time Enum Reflection
@@ -61,6 +94,10 @@ struct Property
     int size;
     void (*read)(const void* obj, void* out);
     void (*write)(void* obj, const void* in);
+    std::vector<Attribute> attributes;
+
+    bool HasAttribute(const char* attr_name) const { return Impl::HasAttribute(attributes, attr_name); }
+    const char* GetAttributeValue(const char* attr_name) const { return Impl::GetAttributeValue(attributes, attr_name); }
 };
 
 struct ClassEntry
@@ -71,6 +108,10 @@ struct ClassEntry
     const char* description;
 
     std::vector<Property> properties;
+    std::vector<Attribute> attributes;
+
+    bool HasAttribute(const char* attr_name) const { return Impl::HasAttribute(attributes, attr_name); }
+    const char* GetAttributeValue(const char* attr_name) const { return Impl::GetAttributeValue(attributes, attr_name); }
 };
 
 #pragma region Compile-Time Class Reflection
@@ -138,6 +179,15 @@ __enum_value_to_name_switch__
 __enum_name_to_value_switch__
         return k_end;
     }
+
+    static const std::vector<Attribute>& GetAttributes()
+    {
+        static const std::vector<Attribute> s_attributes = {__enum_attributes__};
+        return s_attributes;
+    }
+
+    static bool HasAttribute(const char* attr_name) { return Impl::HasAttribute(GetAttributes(), attr_name); }
+    static const char* GetAttributeValue(const char* attr_name) { return Impl::GetAttributeValue(GetAttributes(), attr_name); }
 };
 )";
 
@@ -208,6 +258,15 @@ struct Class<__class_scoped_name__>
         }
         return false;
     }
+
+    static const std::vector<Attribute>& GetAttributes()
+    {
+        static const std::vector<Attribute> s_attributes = {__class_attributes__};
+        return s_attributes;
+    }
+
+    static bool HasAttribute(const char* attr_name) { return Impl::HasAttribute(GetAttributes(), attr_name); }
+    static const char* GetAttributeValue(const char* attr_name) { return Impl::GetAttributeValue(GetAttributes(), attr_name); }
 
 private:
 	std::vector<Property> m_properties = __class_init_properties__;

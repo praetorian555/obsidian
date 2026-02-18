@@ -25,7 +25,7 @@ enum DayOfWeek
 };
 
 /// This is a vegetable enum.
-OBS_ENUM()
+OBS_ENUM("flags")
 enum class Vegetable : int8_t
 {
     /** This is carrot. */
@@ -53,7 +53,7 @@ using namespace std;
 /**
  * This is a test struct.
  */
-OBS_CLASS()
+OBS_CLASS("serializable=1")
 struct DataStruct
 {
     OBS_ENUM()
@@ -64,7 +64,7 @@ struct DataStruct
         C
     };
 
-    OBS_PROP()
+    OBS_PROP("min=0", "max=100")
     int32_t a = 1;
 
     OBS_PROP()
