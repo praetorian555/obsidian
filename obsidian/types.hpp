@@ -52,6 +52,7 @@ struct CppProperty
     Opal::StringUtf8 type_scope;
     Opal::StringUtf8 full_type;
     Opal::StringUtf8 description;
+    bool is_pod = false;
     Opal::i64 alignment = 0;
     Opal::i64 offset = 0;
     Opal::i64 size = 0;

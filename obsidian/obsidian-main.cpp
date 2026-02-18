@@ -251,6 +251,7 @@ CXChildVisitResult VisitorClassProperty(CXCursor cursor, CXCursor parent, CXClie
     }
 
     property.description = GetEnumConstantDescription(cursor);
+    property.is_pod = clang_isPODType(type) != 0;
     property.alignment = clang_Type_getAlignOf(type);
     property.offset = clang_Cursor_getOffsetOfField(cursor) / 8;
     property.size = clang_Type_getSizeOf(type);
