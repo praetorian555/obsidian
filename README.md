@@ -282,9 +282,6 @@ cmake/
 
 ### Missing Tests
 
-- **`class` vs `struct`** — Only structs are tested. Classes marked with `OBS_CLASS()` are not tested.
-- **Global namespace types** — All test types are in namespaces. Types in the global namespace are not tested.
-- **Empty types** — Enums with no constants and classes with no properties are not tested.
 - **Error cases** — No tests for invalid input files, missing macros, or malformed attributes.
 
 ## AI Disclosure

@@ -87,6 +87,10 @@ static Opal::StringUtf8 GenerateEnumSpecialization(const CppEnum& cpp_enum)
         const CppEnumConstant& last = cpp_enum.constants[cpp_enum.constants.GetSize() - 1];
         result = ReplaceAll(result, "__enum_last_entry__", QualifiedConstantName(cpp_enum, last));
     }
+    else
+    {
+        result = ReplaceAll(result, "__enum_last_entry__", "-1");
+    }
 
     // Value to description switch
     Opal::StringUtf8 desc_switch;

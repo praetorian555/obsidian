@@ -9,6 +9,35 @@
 #error This should not happen!
 #endif
 
+/// A global enum.
+OBS_ENUM()
+enum class GlobalColor
+{
+    Red,
+    Green,
+    Blue,
+};
+
+OBS_CLASS()
+struct GlobalPoint
+{
+    OBS_PROP()
+    float x = 0.0f;
+
+    OBS_PROP()
+    float y = 0.0f;
+};
+
+OBS_ENUM()
+enum class EmptyEnum : int32_t
+{
+};
+
+OBS_CLASS()
+struct EmptyStruct
+{
+};
+
 namespace FirstNamespace
 {
 
@@ -80,6 +109,22 @@ struct DataStruct
 
     OBS_PROP()
     string e = "this is test";
+};
+
+/// A player entity.
+OBS_CLASS("entity")
+class Player
+{
+public:
+    /// Player name.
+    OBS_PROP()
+    string name = "unnamed";
+
+    OBS_PROP()
+    int32_t health = 100;
+
+    OBS_PROP()
+    float speed = 5.0f;
 };
 
 } // SecondNamespace

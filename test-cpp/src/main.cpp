@@ -560,3 +560,203 @@ TEST_CASE("Class attributes", "[refl][class][attributes]")
         REQUIRE(it->attributes.empty());
     }
 }
+
+TEST_CASE("Class (not struct) reflection", "[refl][class]")
+{
+    using Player = FirstNamespace::SecondNamespace::Player;
+
+    SECTION("Name and description")
+    {
+        REQUIRE(strcmp(Obs::Class<Player>::GetName(), "Player") == 0);
+        REQUIRE(strcmp(Obs::Class<Player>::GetScope(), "FirstNamespace::SecondNamespace") == 0);
+        REQUIRE(strcmp(Obs::Class<Player>::GetScopedName(), "FirstNamespace::SecondNamespace::Player") == 0);
+        REQUIRE(strcmp(Obs::Class<Player>::GetDescription(), "A player entity.") == 0);
+    }
+    SECTION("Attributes")
+    {
+        REQUIRE(Obs::Class<Player>::HasAttribute("entity"));
+        REQUIRE(strcmp(Obs::Class<Player>::GetAttributeValue("entity"), "1") == 0);
+    }
+    SECTION("Properties")
+    {
+        auto it = Obs::Class<Player>::Get().begin();
+
+        REQUIRE(strcmp(it->name, "name") == 0);
+        REQUIRE(strcmp(it->type_name, "string") == 0);
+        REQUIRE(strcmp(it->description, "Player name.") == 0);
+        REQUIRE(it->is_pod == false);
+        REQUIRE(it->offset == offsetof(Player, name));
+        REQUIRE(it->size == sizeof(std::string));
+
+        ++it;
+        REQUIRE(strcmp(it->name, "health") == 0);
+        REQUIRE(strcmp(it->type_name, "int32_t") == 0);
+        REQUIRE(it->is_pod == true);
+        REQUIRE(it->offset == offsetof(Player, health));
+        REQUIRE(it->size == sizeof(int32_t));
+
+        ++it;
+        REQUIRE(strcmp(it->name, "speed") == 0);
+        REQUIRE(strcmp(it->type_name, "float") == 0);
+        REQUIRE(it->is_pod == true);
+        REQUIRE(it->offset == offsetof(Player, speed));
+        REQUIRE(it->size == sizeof(float));
+    }
+    SECTION("Read properties")
+    {
+        Player player;
+        player.name = "hero";
+        player.health = 75;
+        player.speed = 10.0f;
+
+        std::string name_val;
+        int32_t health_val = 0;
+        float speed_val = 0.0f;
+
+        REQUIRE(Obs::Class<Player>::Read(&name_val, &player, "name"));
+        REQUIRE(Obs::Class<Player>::Read(&health_val, &player, "health"));
+        REQUIRE(Obs::Class<Player>::Read(&speed_val, &player, "speed"));
+
+        REQUIRE(name_val == "hero");
+        REQUIRE(health_val == 75);
+        REQUIRE(speed_val == 10.0f);
+    }
+    SECTION("Write properties")
+    {
+        Player player;
+
+        std::string name_val = "new_name";
+        int32_t health_val = 200;
+        float speed_val = 20.0f;
+
+        REQUIRE(Obs::Class<Player>::Write(&name_val, &player, "name"));
+        REQUIRE(Obs::Class<Player>::Write(&health_val, &player, "health"));
+        REQUIRE(Obs::Class<Player>::Write(&speed_val, &player, "speed"));
+
+        REQUIRE(player.name == "new_name");
+        REQUIRE(player.health == 200);
+        REQUIRE(player.speed == 20.0f);
+    }
+    SECTION("ClassCollection lookup")
+    {
+        const Obs::ClassEntry* entry = nullptr;
+        REQUIRE(Obs::ClassCollection::GetClassEntry("Player", entry));
+        REQUIRE(strcmp(entry->name, "Player") == 0);
+        REQUIRE(strcmp(entry->scope, "FirstNamespace::SecondNamespace") == 0);
+        REQUIRE(strcmp(entry->scoped_name, "FirstNamespace::SecondNamespace::Player") == 0);
+        REQUIRE(strcmp(entry->description, "A player entity.") == 0);
+        REQUIRE(entry->properties.size() == 3);
+        REQUIRE(entry->HasAttribute("entity"));
+    }
+    SECTION("ClassCollection read and write")
+    {
+        Player player;
+        player.health = 50;
+
+        int32_t health_val = 0;
+        REQUIRE(Obs::ClassCollection::Read(&health_val, &player, "Player", "health"));
+        REQUIRE(health_val == 50);
+
+        int32_t new_health = 999;
+        REQUIRE(Obs::ClassCollection::Write(&new_health, &player, "Player", "health"));
+        REQUIRE(player.health == 999);
+    }
+}
+
+TEST_CASE("Global namespace types", "[refl][global]")
+{
+    SECTION("GlobalColor enum")
+    {
+        REQUIRE(strcmp(Obs::Enum<GlobalColor>::GetEnumName(), "GlobalColor") == 0);
+        REQUIRE(strcmp(Obs::Enum<GlobalColor>::GetFullEnumName(), "::GlobalColor") == 0);
+        REQUIRE(strcmp(Obs::Enum<GlobalColor>::GetDescription(), "A global enum.") == 0);
+
+        REQUIRE(strcmp(Obs::Enum<GlobalColor>::GetValueName(GlobalColor::Red), "Red") == 0);
+        REQUIRE(strcmp(Obs::Enum<GlobalColor>::GetValueName(GlobalColor::Green), "Green") == 0);
+        REQUIRE(strcmp(Obs::Enum<GlobalColor>::GetValueName(GlobalColor::Blue), "Blue") == 0);
+
+        REQUIRE(Obs::Enum<GlobalColor>::GetValue("Red") == GlobalColor::Red);
+        REQUIRE(Obs::Enum<GlobalColor>::GetValue("Blue") == GlobalColor::Blue);
+    }
+    SECTION("GlobalColor in EnumCollection")
+    {
+        const Obs::EnumEntry* entry = nullptr;
+        REQUIRE(Obs::EnumCollection::GetEnum("GlobalColor", entry));
+        REQUIRE(strcmp(entry->name, "GlobalColor") == 0);
+        REQUIRE(strcmp(entry->full_name, "::GlobalColor") == 0);
+        REQUIRE(entry->items.size() == 3);
+    }
+    SECTION("GlobalPoint class")
+    {
+        REQUIRE(strcmp(Obs::Class<GlobalPoint>::GetName(), "GlobalPoint") == 0);
+        REQUIRE(strcmp(Obs::Class<GlobalPoint>::GetScope(), "") == 0);
+        REQUIRE(strcmp(Obs::Class<GlobalPoint>::GetScopedName(), "::GlobalPoint") == 0);
+
+        auto it = Obs::Class<GlobalPoint>::Get().begin();
+        REQUIRE(strcmp(it->name, "x") == 0);
+        REQUIRE(strcmp(it->type_name, "float") == 0);
+        REQUIRE(it->offset == offsetof(GlobalPoint, x));
+
+        ++it;
+        REQUIRE(strcmp(it->name, "y") == 0);
+        REQUIRE(strcmp(it->type_name, "float") == 0);
+        REQUIRE(it->offset == offsetof(GlobalPoint, y));
+    }
+    SECTION("GlobalPoint read and write")
+    {
+        GlobalPoint point;
+        point.x = 3.0f;
+        point.y = 4.0f;
+
+        float x_val = 0.0f;
+        float y_val = 0.0f;
+        REQUIRE(Obs::Class<GlobalPoint>::Read(&x_val, &point, "x"));
+        REQUIRE(Obs::Class<GlobalPoint>::Read(&y_val, &point, "y"));
+        REQUIRE(x_val == 3.0f);
+        REQUIRE(y_val == 4.0f);
+
+        float new_x = 10.0f;
+        REQUIRE(Obs::Class<GlobalPoint>::Write(&new_x, &point, "x"));
+        REQUIRE(point.x == 10.0f);
+    }
+    SECTION("GlobalPoint in ClassCollection")
+    {
+        const Obs::ClassEntry* entry = nullptr;
+        REQUIRE(Obs::ClassCollection::GetClassEntry("GlobalPoint", entry));
+        REQUIRE(strcmp(entry->name, "GlobalPoint") == 0);
+        REQUIRE(strcmp(entry->scope, "") == 0);
+        REQUIRE(strcmp(entry->scoped_name, "::GlobalPoint") == 0);
+        REQUIRE(entry->properties.size() == 2);
+    }
+}
+
+TEST_CASE("Empty types", "[refl][empty]")
+{
+    SECTION("EmptyEnum compile-time")
+    {
+        REQUIRE(strcmp(Obs::Enum<EmptyEnum>::GetEnumName(), "EmptyEnum") == 0);
+        REQUIRE(strcmp(Obs::Enum<EmptyEnum>::GetFullEnumName(), "::EmptyEnum") == 0);
+        REQUIRE(Obs::Enum<EmptyEnum>::GetAttributes().empty());
+    }
+    SECTION("EmptyEnum in collection")
+    {
+        const Obs::EnumEntry* entry = nullptr;
+        REQUIRE(Obs::EnumCollection::GetEnum("EmptyEnum", entry));
+        REQUIRE(entry->items.empty());
+    }
+    SECTION("EmptyStruct compile-time")
+    {
+        REQUIRE(strcmp(Obs::Class<EmptyStruct>::GetName(), "EmptyStruct") == 0);
+        REQUIRE(strcmp(Obs::Class<EmptyStruct>::GetScopedName(), "::EmptyStruct") == 0);
+        REQUIRE(Obs::Class<EmptyStruct>::GetAttributes().empty());
+
+        auto& instance = Obs::Class<EmptyStruct>::Get();
+        REQUIRE(instance.begin() == instance.end());
+    }
+    SECTION("EmptyStruct in collection")
+    {
+        const Obs::ClassEntry* entry = nullptr;
+        REQUIRE(Obs::ClassCollection::GetClassEntry("EmptyStruct", entry));
+        REQUIRE(entry->properties.empty());
+    }
+}
