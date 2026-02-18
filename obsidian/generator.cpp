@@ -47,16 +47,6 @@ static Opal::StringUtf8 DeterminePropertyType(const Opal::StringUtf8& type_name)
     return "Type::POD";
 }
 
-static Opal::StringUtf8 FullyScopedType(const Opal::StringUtf8& type_name)
-{
-    if (Opal::Find<Opal::StringUtf8>(type_name, "::") != Opal::StringUtf8::k_npos
-        && !StartsWith<Opal::StringUtf8>(type_name, "::"))
-    {
-        return "::" + type_name;
-    }
-    return type_name;
-}
-
 static bool WriteToFile(const Opal::StringUtf8& path, const Opal::StringUtf8& content)
 {
     FILE* file = fopen(path.GetData(), "w");
@@ -158,7 +148,7 @@ static Opal::StringUtf8 GenerateClassSpecialization(const CppClass& cpp_class)
             properties += ", ";
         }
         Opal::StringUtf8 offset_expr = "offsetof(" + cpp_class.full_name + ", " + prop.name + ")";
-        Opal::StringUtf8 size_expr = "sizeof(std::declval<" + FullyScopedType(prop.type) + ">())";
+        Opal::StringUtf8 size_expr = "sizeof(std::declval<" + prop.full_type + ">())";
         properties += "{\"" + prop.name + "\", \"" + prop.description + "\", \"" + prop.type + "\", " + DeterminePropertyType(prop.type)
                       + ", " + offset_expr + ", " + size_expr + "}";
     }
@@ -233,7 +223,7 @@ static Opal::StringUtf8 GenerateClassCollection(const Opal::DynamicArray<CppClas
                 entries += ", ";
             }
             Opal::StringUtf8 offset_expr = "offsetof(" + cpp_class.full_name + ", " + prop.name + ")";
-            Opal::StringUtf8 size_expr = "sizeof(std::declval<" + FullyScopedType(prop.type) + ">())";
+            Opal::StringUtf8 size_expr = "sizeof(std::declval<" + prop.full_type + ">())";
             entries += "{\"" + prop.name + "\", \"" + prop.description + "\", \"" + prop.type + "\", " + DeterminePropertyType(prop.type)
                        + ", " + offset_expr + ", " + size_expr + "}";
         }
