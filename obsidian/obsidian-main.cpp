@@ -227,6 +227,29 @@ CXChildVisitResult VisitorClassProperty(CXCursor cursor, CXCursor parent, CXClie
     property.name = ToString(clang_getCursorSpelling(cursor));
     CXType type = clang_getCursorType(cursor);
     property.type = ToString(clang_getTypeSpelling(type));
+
+    CXCursor type_decl = clang_getTypeDeclaration(type);
+    if (!clang_Cursor_isNull(type_decl))
+    {
+        Opal::DynamicArray<Opal::StringUtf8> parents;
+        CollectScope(type_decl, parents);
+        Opal::StringUtf8 scope;
+        for (Opal::i32 i = static_cast<Opal::i32>(parents.GetSize()) - 1; i >= 0; i--)
+        {
+            scope += parents[i] + "::";
+        }
+        if (!scope.IsEmpty())
+        {
+            scope = Opal::GetSubString(scope, 0, scope.GetSize() - 2).GetValue();
+        }
+        property.type_scope = scope;
+        property.full_type = scope.IsEmpty() ? property.type : scope + "::" + property.type;
+    }
+    else
+    {
+        property.full_type = property.type;
+    }
+
     property.description = GetEnumConstantDescription(cursor);
     property.alignment = clang_Type_getAlignOf(type);
     property.offset = clang_Cursor_getOffsetOfField(cursor) / 8;

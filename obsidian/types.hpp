@@ -49,6 +49,8 @@ struct CppProperty
 {
     Opal::StringUtf8 name;
     Opal::StringUtf8 type;
+    Opal::StringUtf8 type_scope;
+    Opal::StringUtf8 full_type;
     Opal::StringUtf8 description;
     Opal::i64 alignment = 0;
     Opal::i64 offset = 0;
