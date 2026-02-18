@@ -4,8 +4,6 @@
 #include "opal/container/dynamic-array.h"
 #include "opal/container/string.h"
 
-#include "clang-c/Index.h"
-
 using i8 = Opal::i8;
 using i16 = Opal::i16;
 using i32 = Opal::i32;
@@ -41,6 +39,7 @@ struct CppEnum
     Opal::StringUtf8 scope;
     Opal::StringUtf8 description;
     Opal::StringUtf8 underlying_type;
+    Opal::i64 underlying_type_size = 0;
     bool is_enum_class = false;
     Opal::DynamicArray<CppEnumConstant> constants;
     Opal::DynamicArray<CppAttribute> attributes;
@@ -53,6 +52,7 @@ struct CppProperty
     Opal::StringUtf8 description;
     Opal::i64 alignment = 0;
     Opal::i64 offset = 0;
+    Opal::i64 size = 0;
     Opal::DynamicArray<CppAttribute> attributes;
 };
 
@@ -84,15 +84,4 @@ struct CppContext
     ProgramArguments arguments;
     Opal::DynamicArray<CppEnum> enums;
     Opal::DynamicArray<CppClass> classes;
-};
-
-struct CppTokens
-{
-    CXToken* data = nullptr;
-    Opal::u32 count = 0;
-    CXTranslationUnit translation_unit;
-
-    CppTokens(CXTranslationUnit in_tu, CXToken* in_data, Opal::u32 in_count) : data(in_data), count(in_count), translation_unit(in_tu) {}
-
-    ~CppTokens() { clang_disposeTokens(translation_unit, data, count); }
 };

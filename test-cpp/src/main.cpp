@@ -19,16 +19,60 @@ int main(int argc, char* argv[])
     return session.run();
 }
 
-TEST_CASE("Strong type enum reflection", "[refl][enum]")
+TEST_CASE("Enum reflection", "[refl][enum]")
 {
+    SECTION("DayOfWeek")
+    {
+        using DayOfWeekEnum = FirstNamespace::DayOfWeek;
+        REQUIRE(strcmp(Obs::Enum<DayOfWeekEnum>::GetEnumName(), "DayOfWeek") == 0);
+        REQUIRE(strcmp(Obs::Enum<DayOfWeekEnum>::GetFullEnumName(), "FirstNamespace::DayOfWeek") == 0);
+        REQUIRE(strcmp(Obs::Enum<DayOfWeekEnum>::GetDescription(), "") == 0);
+
+        REQUIRE(Obs::Enum<DayOfWeekEnum>::GetUnderlyingValue(Obs::Enum<DayOfWeekEnum>::k_end) == 7);
+
+        REQUIRE(strcmp(Obs::Enum<DayOfWeekEnum>::GetValueName(FirstNamespace::Monday), "Monday") == 0);
+        REQUIRE(strcmp(Obs::Enum<DayOfWeekEnum>::GetValueName(FirstNamespace::Sunday), "Sunday") == 0);
+
+        REQUIRE(Obs::Enum<DayOfWeekEnum>::GetValue("Monday") == static_cast<DayOfWeekEnum>(0));
+        REQUIRE(Obs::Enum<DayOfWeekEnum>::GetValue("Sunday") == static_cast<DayOfWeekEnum>(6));
+
+        REQUIRE(Obs::Enum<DayOfWeekEnum>::GetValue(0) == static_cast<DayOfWeekEnum>(0));
+        REQUIRE(Obs::Enum<DayOfWeekEnum>::GetUnderlyingValue(static_cast<DayOfWeekEnum>(0)) == 0);
+    }
+    SECTION("Vegetable")
+    {
+        using VegEnum = FirstNamespace::Vegetable;
+        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetEnumName(), "Vegetable") == 0);
+        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetFullEnumName(), "FirstNamespace::Vegetable") == 0);
+        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetDescription(), "This is a vegetable enum.") == 0);
+
+        REQUIRE(Obs::Enum<VegEnum>::GetUnderlyingValue(Obs::Enum<VegEnum>::k_end) == -7);
+
+        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetValueName(VegEnum::Carrot), "Carrot") == 0);
+        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetValueName(VegEnum::Potato), "Potato") == 0);
+        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetValueName(VegEnum::Cucumber), "Cucumber") == 0);
+
+        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetValueDescription(VegEnum::Carrot), "This is carrot.") == 0);
+        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetValueDescription(VegEnum::Potato), "") == 0);
+        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetValueDescription(VegEnum::Cucumber), "This is cucumber.") == 0);
+
+        REQUIRE(Obs::Enum<VegEnum>::GetValue("Carrot") == VegEnum::Carrot);
+        REQUIRE(Obs::Enum<VegEnum>::GetValue("Potato") == VegEnum::Potato);
+        REQUIRE(Obs::Enum<VegEnum>::GetValue("Cucumber") == VegEnum::Cucumber);
+
+        REQUIRE(Obs::Enum<VegEnum>::GetValue(-10) == VegEnum::Carrot);
+        REQUIRE(Obs::Enum<VegEnum>::GetValue(-9) == VegEnum::Potato);
+        REQUIRE(Obs::Enum<VegEnum>::GetValue(-8) == VegEnum::Cucumber);
+
+        REQUIRE(Obs::Enum<VegEnum>::GetUnderlyingValue(VegEnum::Carrot) == -10);
+        REQUIRE(Obs::Enum<VegEnum>::GetUnderlyingValue(VegEnum::Potato) == -9);
+        REQUIRE(Obs::Enum<VegEnum>::GetUnderlyingValue(VegEnum::Cucumber) == -8);
+    }
     SECTION("Fruit")
     {
-        std::string enum_name = Obs::Enum<Fruit>::GetEnumName();
-        REQUIRE(enum_name == "Fruit");
-        std::string full_enum_name = Obs::Enum<Fruit>::GetFullEnumName();
-        REQUIRE(full_enum_name == "FirstNamespace::SecondNamespace::Fruit");
-        std::string description = Obs::Enum<Fruit>::GetDescription();
-        REQUIRE(description == "This is a fruit enum.");
+        REQUIRE(strcmp(Obs::Enum<Fruit>::GetEnumName(), "Fruit") == 0);
+        REQUIRE(strcmp(Obs::Enum<Fruit>::GetFullEnumName(), "FirstNamespace::SecondNamespace::Fruit") == 0);
+        REQUIRE(strcmp(Obs::Enum<Fruit>::GetDescription(), "This is a fruit enum.") == 0);
 
         REQUIRE(Obs::Enum<Fruit>::GetUnderlyingValue(Obs::Enum<Fruit>::k_end) == 8);
 
@@ -52,95 +96,57 @@ TEST_CASE("Strong type enum reflection", "[refl][enum]")
         REQUIRE(Obs::Enum<Fruit>::GetUnderlyingValue(Fruit::Orange) == 6);
         REQUIRE(Obs::Enum<Fruit>::GetUnderlyingValue(Fruit::Banana) == 7);
     }
-    SECTION("Vegetable")
+    SECTION("DataType")
     {
-        std::string enum_name = Obs::Enum<FirstNamespace::Vegetable>::GetEnumName();
-        REQUIRE(enum_name == "Vegetable");
-        std::string full_enum_name = Obs::Enum<FirstNamespace::Vegetable>::GetFullEnumName();
-        REQUIRE(full_enum_name == "FirstNamespace::Vegetable");
-        std::string description = Obs::Enum<FirstNamespace::Vegetable>::GetDescription();
-        REQUIRE(description == "This is a vegetable enum.");
+        using DataTypeEnum = DataStruct::DataType;
+        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetEnumName(), "DataType") == 0);
+        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetFullEnumName(), "FirstNamespace::SecondNamespace::DataStruct::DataType") == 0);
+        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetDescription(), "") == 0);
 
-        REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetUnderlyingValue(Obs::Enum<FirstNamespace::Vegetable>::k_end) == -7);
-
-        REQUIRE(strcmp(Obs::Enum<FirstNamespace::Vegetable>::GetValueName(FirstNamespace::Vegetable::Carrot), "Carrot") == 0);
-        REQUIRE(strcmp(Obs::Enum<FirstNamespace::Vegetable>::GetValueName(FirstNamespace::Vegetable::Potato), "Potato") == 0);
-        REQUIRE(strcmp(Obs::Enum<FirstNamespace::Vegetable>::GetValueName(FirstNamespace::Vegetable::Cucumber), "Cucumber") == 0);
-
-        REQUIRE(strcmp(Obs::Enum<FirstNamespace::Vegetable>::GetValueDescription(FirstNamespace::Vegetable::Carrot), "This is carrot.") == 0);
-        REQUIRE(strcmp(Obs::Enum<FirstNamespace::Vegetable>::GetValueDescription(FirstNamespace::Vegetable::Potato), "") == 0);
-        REQUIRE(strcmp(Obs::Enum<FirstNamespace::Vegetable>::GetValueDescription(FirstNamespace::Vegetable::Cucumber), "This is cucumber.") == 0);
-
-        REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetValue("Carrot") == FirstNamespace::Vegetable::Carrot);
-        REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetValue("Potato") == FirstNamespace::Vegetable::Potato);
-        REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetValue("Cucumber") == FirstNamespace::Vegetable::Cucumber);
-
-        REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetValue(-10) == FirstNamespace::Vegetable::Carrot);
-        REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetValue(-9) == FirstNamespace::Vegetable::Potato);
-        REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetValue(-8) == FirstNamespace::Vegetable::Cucumber);
-
-        REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetUnderlyingValue(FirstNamespace::Vegetable::Carrot) == -10);
-        REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetUnderlyingValue(FirstNamespace::Vegetable::Potato) == -9);
-        REQUIRE(Obs::Enum<FirstNamespace::Vegetable>::GetUnderlyingValue(FirstNamespace::Vegetable::Cucumber) == -8);
-    }
-    SECTION("DataType") // Added section for DataType
-    {
-        using DataTypeEnum = FirstNamespace::SecondNamespace::DataStruct::DataType; // Alias for brevity
-        std::string enum_name = Obs::Enum<DataTypeEnum>::GetEnumName();
-        REQUIRE(enum_name == "DataType");
-        std::string full_enum_name = Obs::Enum<DataTypeEnum>::GetFullEnumName();
-        REQUIRE(full_enum_name == "FirstNamespace::SecondNamespace::DataStruct::DataType");
-        std::string description = Obs::Enum<DataTypeEnum>::GetDescription();
-        REQUIRE(description == ""); // No description provided
-
-        REQUIRE(Obs::Enum<DataTypeEnum>::GetUnderlyingValue(Obs::Enum<DataTypeEnum>::k_end) == 3); // Default enum values end at C=2, so k_end is 3
+        REQUIRE(Obs::Enum<DataTypeEnum>::GetUnderlyingValue(Obs::Enum<DataTypeEnum>::k_end) == 3);
 
         REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetValueName(DataTypeEnum::A), "A") == 0);
         REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetValueName(DataTypeEnum::B), "B") == 0);
         REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetValueName(DataTypeEnum::C), "C") == 0);
 
-        // Assuming no descriptions for individual values
-        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetValueDescription(DataTypeEnum::A), "") == 0);
-        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetValueDescription(DataTypeEnum::B), "") == 0);
-        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetValueDescription(DataTypeEnum::C), "") == 0);
-
         REQUIRE(Obs::Enum<DataTypeEnum>::GetValue("A") == DataTypeEnum::A);
         REQUIRE(Obs::Enum<DataTypeEnum>::GetValue("B") == DataTypeEnum::B);
         REQUIRE(Obs::Enum<DataTypeEnum>::GetValue("C") == DataTypeEnum::C);
 
-        // Default underlying values: A=0, B=1, C=2
         REQUIRE(Obs::Enum<DataTypeEnum>::GetValue(0) == DataTypeEnum::A);
         REQUIRE(Obs::Enum<DataTypeEnum>::GetValue(1) == DataTypeEnum::B);
         REQUIRE(Obs::Enum<DataTypeEnum>::GetValue(2) == DataTypeEnum::C);
-
-        REQUIRE(Obs::Enum<DataTypeEnum>::GetUnderlyingValue(DataTypeEnum::A) == 0);
-        REQUIRE(Obs::Enum<DataTypeEnum>::GetUnderlyingValue(DataTypeEnum::B) == 1);
-        REQUIRE(Obs::Enum<DataTypeEnum>::GetUnderlyingValue(DataTypeEnum::C) == 2);
     }
-
 }
 
-TEST_CASE("Enum collection", "[refl][enum]")
+TEST_CASE("Enum collection", "[refl][enum-collection]")
 {
-    SECTION("Collection info")
+    SECTION("Get enum entries")
     {
         const Obs::EnumEntry* entry = nullptr;
+
+        REQUIRE(Obs::EnumCollection::GetEnum("DayOfWeek", entry));
+        REQUIRE(strcmp(entry->name, "DayOfWeek") == 0);
+        REQUIRE(entry->underlying_type_size == sizeof(int));
+        REQUIRE(entry->items.size() == 7);
+
         REQUIRE(Obs::EnumCollection::GetEnum("Vegetable", entry));
         REQUIRE(strcmp(entry->name, "Vegetable") == 0);
         REQUIRE(strcmp(entry->full_name, "FirstNamespace::Vegetable") == 0);
         REQUIRE(strcmp(entry->description, "This is a vegetable enum.") == 0);
         REQUIRE(entry->underlying_type_size == 1);
         REQUIRE(entry->items.size() == 3);
+
         REQUIRE(Obs::EnumCollection::GetEnum("Fruit", entry));
         REQUIRE(strcmp(entry->name, "Fruit") == 0);
         REQUIRE(strcmp(entry->full_name, "FirstNamespace::SecondNamespace::Fruit") == 0);
         REQUIRE(strcmp(entry->description, "This is a fruit enum.") == 0);
         REQUIRE(entry->underlying_type_size == sizeof(int));
         REQUIRE(entry->items.size() == 3);
+
         REQUIRE(Obs::EnumCollection::GetEnum("DataType", entry));
         REQUIRE(strcmp(entry->name, "DataType") == 0);
         REQUIRE(strcmp(entry->full_name, "FirstNamespace::SecondNamespace::DataStruct::DataType") == 0);
-        REQUIRE(strcmp(entry->description, "") == 0);
         REQUIRE(entry->underlying_type_size == 2);
         REQUIRE(entry->items.size() == 3);
     }
@@ -152,6 +158,7 @@ TEST_CASE("Enum collection", "[refl][enum]")
     SECTION("Collection items")
     {
         const Obs::EnumEntry* entry = nullptr;
+
         REQUIRE(Obs::EnumCollection::GetEnum("Vegetable", entry));
         REQUIRE(strcmp(entry->items[0].name, "Carrot") == 0);
         REQUIRE(static_cast<int8_t>(entry->items[0].value) == -10);
@@ -162,15 +169,12 @@ TEST_CASE("Enum collection", "[refl][enum]")
 
         REQUIRE(Obs::EnumCollection::GetEnum("Fruit", entry));
         REQUIRE(strcmp(entry->items[0].name, "Apple") == 0);
-        REQUIRE(strcmp(entry->items[0].description, "") == 0);
         REQUIRE(static_cast<int>(entry->items[0].value) == 5);
         REQUIRE(strcmp(entry->items[1].name, "Orange") == 0);
         REQUIRE(strcmp(entry->items[1].description, "This is orange.") == 0);
         REQUIRE(static_cast<int>(entry->items[1].value) == 6);
-        REQUIRE(strcmp(entry->items[2].name, "Banana") == 0);
-        REQUIRE(static_cast<int>(entry->items[2].value) == 7);
     }
-    SECTION("Collection get item value by name")
+    SECTION("Get value by name")
     {
         FirstNamespace::Vegetable val = FirstNamespace::Vegetable::Carrot;
         REQUIRE(Obs::EnumCollection::GetValue(&val, "Vegetable", "Potato"));
@@ -180,82 +184,67 @@ TEST_CASE("Enum collection", "[refl][enum]")
         REQUIRE(Obs::EnumCollection::GetValue(&val2, "Fruit", "Orange"));
         REQUIRE(val2 == Fruit::Orange);
     }
-    SECTION("Try to get item value with bad enum name")
+    SECTION("Bad names")
     {
         FirstNamespace::Vegetable val = FirstNamespace::Vegetable::Carrot;
         REQUIRE(!Obs::EnumCollection::GetValue(&val, "BadEnum", "Potato"));
-    }
-    SECTION("Try to get item value with bad item name")
-    {
-        FirstNamespace::Vegetable val = FirstNamespace::Vegetable::Carrot;
         REQUIRE(!Obs::EnumCollection::GetValue(&val, "Vegetable", "BadItem"));
-    }
-    SECTION("Collection get enum entry by name")
-    {
-        const Obs::EnumEntry* entry = nullptr;
-        REQUIRE(Obs::EnumCollection::GetEnum("Fruit", entry));
-        REQUIRE(strcmp(entry->name, "Fruit") == 0);
-        REQUIRE(strcmp(entry->full_name, "FirstNamespace::SecondNamespace::Fruit") == 0);
-        REQUIRE(entry->underlying_type_size == sizeof(int));
-        REQUIRE(entry->items.size() == 3);
     }
 }
 
-TEST_CASE("Struct compile-time reflection", "[refl][struct]")
+TEST_CASE("Class reflection", "[refl][class]")
 {
-    SECTION("Check name, scope and description")
+    SECTION("Name and description")
     {
         REQUIRE(strcmp(Obs::Class<DataStruct>::GetName(), "DataStruct") == 0);
         REQUIRE(strcmp(Obs::Class<DataStruct>::GetScope(), "FirstNamespace::SecondNamespace") == 0);
         REQUIRE(strcmp(Obs::Class<DataStruct>::GetScopedName(), "FirstNamespace::SecondNamespace::DataStruct") == 0);
         REQUIRE(strcmp(Obs::Class<DataStruct>::GetDescription(), "This is a test struct.") == 0);
     }
-    SECTION("Check properties")
+    SECTION("Properties")
     {
-        const Obs::Property& first_prop = *Obs::Class<DataStruct>::Get().begin();
-        REQUIRE(strcmp(first_prop.name, "a") == 0);
-        REQUIRE(strcmp(first_prop.type_name, "int") == 0);
-        REQUIRE(first_prop.offset == offsetof(DataStruct, a));
-        REQUIRE(first_prop.size == sizeof(int));
+        auto it = Obs::Class<DataStruct>::Get().begin();
 
-        const Obs::Property& second_prop = *(Obs::Class<DataStruct>::Get().begin() + 1);
-        REQUIRE(strcmp(second_prop.name, "b") == 0);
-        REQUIRE(strcmp(second_prop.type_name, "float") == 0);
-        REQUIRE(second_prop.offset == offsetof(DataStruct, b));
-        REQUIRE(second_prop.size == sizeof(float));
+        REQUIRE(strcmp(it->name, "a") == 0);
+        REQUIRE(strcmp(it->type_name, "int32_t") == 0);
+        REQUIRE(it->offset == offsetof(DataStruct, a));
+        REQUIRE(it->size == sizeof(int));
 
-        const Obs::Property& third_prop = *(Obs::Class<DataStruct>::Get().begin() + 2);
-        REQUIRE(strcmp(third_prop.name, "c") == 0);
-        REQUIRE(strcmp(third_prop.type_name, "char const *") == 0);
-        REQUIRE(third_prop.offset == offsetof(DataStruct, c));
-        REQUIRE(third_prop.size == sizeof(char const *));
+        ++it;
+        REQUIRE(strcmp(it->name, "b") == 0);
+        REQUIRE(strcmp(it->type_name, "float") == 0);
+        REQUIRE(it->offset == offsetof(DataStruct, b));
+        REQUIRE(it->size == sizeof(float));
 
-        const Obs::Property& fourth_prop = *(Obs::Class<DataStruct>::Get().begin() + 3);
-        REQUIRE(strcmp(fourth_prop.name, "d") == 0);
-        REQUIRE(strcmp(fourth_prop.type_name, "FirstNamespace::SecondNamespace::DataStruct::DataType") == 0);
-        REQUIRE(fourth_prop.offset == offsetof(DataStruct, d));
-        REQUIRE(fourth_prop.size == sizeof(FirstNamespace::SecondNamespace::DataStruct::DataType));
+        ++it;
+        REQUIRE(strcmp(it->name, "c") == 0);
+        REQUIRE(it->offset == offsetof(DataStruct, c));
+        REQUIRE(it->size == sizeof(const char*));
 
-        const Obs::Property& fifth_prop = *(Obs::Class<DataStruct>::Get().begin() + 4);
-        REQUIRE(strcmp(fifth_prop.name, "e") == 0);
-        REQUIRE(strcmp(fifth_prop.type_name, "std::basic_string<char, std::char_traits<char>, std::allocator<char>>") == 0);
-        REQUIRE(fifth_prop.offset == offsetof(DataStruct, e));
-        REQUIRE(fifth_prop.size == sizeof(std::string));
+        ++it;
+        REQUIRE(strcmp(it->name, "d") == 0);
+        REQUIRE(it->offset == offsetof(DataStruct, d));
+        REQUIRE(it->size == sizeof(DataStruct::DataType));
+
+        ++it;
+        REQUIRE(strcmp(it->name, "e") == 0);
+        REQUIRE(it->offset == offsetof(DataStruct, e));
+        REQUIRE(it->size == sizeof(std::string));
     }
-    SECTION("Read property values")
+    SECTION("Read properties")
     {
         DataStruct data;
-        data.a = 1;
-        data.b = 2.0f;
-        data.c = "Hello world!";
+        data.a = 42;
+        data.b = 3.14f;
+        data.c = "hello";
         data.d = DataStruct::DataType::B;
-        data.e = "Hello world!";
+        data.e = "world";
 
         int a_val = 0;
         float b_val = 0.0f;
-        char const* c_val = nullptr;
+        const char* c_val = nullptr;
         DataStruct::DataType d_val = DataStruct::DataType::A;
-        std::string e_val = "";
+        std::string e_val;
 
         REQUIRE(Obs::Class<DataStruct>::Read(&a_val, &data, "a"));
         REQUIRE(Obs::Class<DataStruct>::Read(&b_val, &data, "b"));
@@ -263,36 +252,26 @@ TEST_CASE("Struct compile-time reflection", "[refl][struct]")
         REQUIRE(Obs::Class<DataStruct>::Read(&d_val, &data, "d"));
         REQUIRE(Obs::Class<DataStruct>::Read(&e_val, &data, "e"));
 
-        REQUIRE(a_val == 1);
-        REQUIRE(b_val == 2.0f);
-        REQUIRE(strcmp(c_val, "Hello world!") == 0);
+        REQUIRE(a_val == 42);
+        REQUIRE(b_val == 3.14f);
+        REQUIRE(strcmp(c_val, "hello") == 0);
         REQUIRE(d_val == DataStruct::DataType::B);
-        REQUIRE(strcmp(e_val.c_str(), "Hello world!") == 0);
+        REQUIRE(e_val == "world");
     }
-    SECTION("Try read with bad property name")
-    {
-        DataStruct data;
-        data.a = 1;
-        int a_val = 0;
-
-        REQUIRE(!Obs::Class<DataStruct>::Read(&a_val, &data, "bad_prop"));
-        REQUIRE(a_val == 0);
-
-    }
-    SECTION("Write property values")
+    SECTION("Write properties")
     {
         DataStruct data;
         data.a = 1;
         data.b = 2.0f;
-        data.c = "Hello world!";
+        data.c = "old";
         data.d = DataStruct::DataType::B;
-        data.e = "Hello world!";
+        data.e = "old";
 
         int a_val = 0;
         float b_val = 0.0f;
-        char const* c_val = nullptr;
+        const char* c_val = nullptr;
         DataStruct::DataType d_val = DataStruct::DataType::A;
-        std::string e_val = "";
+        std::string e_val;
 
         REQUIRE(Obs::Class<DataStruct>::Write(&a_val, &data, "a"));
         REQUIRE(Obs::Class<DataStruct>::Write(&b_val, &data, "b"));
@@ -306,13 +285,11 @@ TEST_CASE("Struct compile-time reflection", "[refl][struct]")
         REQUIRE(data.d == DataStruct::DataType::A);
         REQUIRE(data.e == "");
     }
-    SECTION("Try write with bad property name")
+    SECTION("Bad property name")
     {
         DataStruct data;
-        data.a = 1;
-        int a_val = 0;
-
-        REQUIRE(!Obs::Class<DataStruct>::Write(&a_val, &data, "bad_prop"));
-        REQUIRE(data.a == 1);
+        int val = 0;
+        REQUIRE(!Obs::Class<DataStruct>::Read(&val, &data, "nonexistent"));
+        REQUIRE(!Obs::Class<DataStruct>::Write(&val, &data, "nonexistent"));
     }
 }

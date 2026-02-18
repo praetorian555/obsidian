@@ -24,14 +24,14 @@ enum DayOfWeek
     Sunday,
 };
 
-// This is a vegetable enum.
+/// This is a vegetable enum.
 OBS_ENUM()
 enum class Vegetable : int8_t
 {
     /** This is carrot. */
     Carrot = -10,
     Potato,
-    // This is cucumber.
+    /// This is cucumber.
     Cucumber,
 };
 

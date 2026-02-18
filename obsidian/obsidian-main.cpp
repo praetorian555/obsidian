@@ -5,8 +5,22 @@
 #include "opal/paths.h"
 #include "opal/file-system.h"
 
+#include "clang-c/Index.h"
+
+#include "generator.hpp"
 #include "templates.hpp"
 #include "types.hpp"
+
+struct CppTokens
+{
+    CXToken* data = nullptr;
+    Opal::u32 count = 0;
+    CXTranslationUnit translation_unit;
+
+    CppTokens(CXTranslationUnit in_tu, CXToken* in_data, Opal::u32 in_count) : data(in_data), count(in_count), translation_unit(in_tu) {}
+
+    ~CppTokens() { clang_disposeTokens(translation_unit, data, count); }
+};
 
 Opal::StringUtf8 ToString(const CXString& clang_str)
 {
@@ -168,6 +182,7 @@ void VisitEnum(CXCursor cursor, CppContext& context)
         CppEnum cpp_enum{.name = name, .description = ToString(clang_Cursor_getBriefCommentText(cursor))};
         CXType underlying_type = clang_getEnumDeclIntegerType(cursor);
         cpp_enum.underlying_type = ToString(clang_getTypeSpelling(underlying_type));
+        cpp_enum.underlying_type_size = clang_Type_getSizeOf(underlying_type);
         cpp_enum.is_enum_class = clang_EnumDecl_isScoped(cursor) != 0;
         CollectAttributes({tokens.data + 1, tokens.count - 1}, translation_unit, cpp_enum.attributes);
         clang_visitChildren(cursor, VisitorEnumConstant, &cpp_enum);
@@ -213,6 +228,7 @@ CXChildVisitResult VisitorClassProperty(CXCursor cursor, CXCursor parent, CXClie
     property.description = GetEnumConstantDescription(cursor);
     property.alignment = clang_Type_getAlignOf(type);
     property.offset = clang_Cursor_getOffsetOfField(cursor) / 8;
+    property.size = clang_Type_getSizeOf(type);
     CollectAttributes({tokens.data + 1, tokens.count - 1}, translation_unit, property.attributes);
 
     auto* cpp_class = static_cast<CppClass*>(client_data);
@@ -476,6 +492,16 @@ int main(int argc, char** argv)
     if (context.arguments.should_dump_ast)
     {
         DumpAst(context);
+    }
+
+    if (!context.arguments.output_dir.IsEmpty())
+    {
+        if (!Generate(context))
+        {
+            printf("Error: Code generation failed!\n");
+            clang_disposeIndex(index);
+            return 1;
+        }
     }
 
     clang_disposeIndex(index);

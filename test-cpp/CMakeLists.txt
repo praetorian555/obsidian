@@ -16,6 +16,8 @@ add_library(warnings INTERFACE)
 add_library(options INTERFACE)
 setup_compiler_warnings(warnings)
 setup_compiler_options(options)
+include(../cmake/sanitizers.cmake)
+setup_sanitizers(options)
 
 add_custom_target(
         generate_reflection
@@ -23,7 +25,7 @@ add_custom_target(
         COMMAND $<TARGET_FILE:obsidian>
             -input-file ${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
             -output-dir ${CMAKE_CURRENT_BINARY_DIR}/include
-            -compile-options "-DDONT_CRASH -I${CMAKE_CURRENT_SOURCE_DIR}/include"
+            -compile-options "-DDONT_CRASH -I${CMAKE_CURRENT_SOURCE_DIR}/include -I${CMAKE_SOURCE_DIR}/include"
         DEPENDS obsidian
         COMMENT "Generating reflection headers..."
         VERBATIM
@@ -33,7 +35,7 @@ add_executable(test-cpp-project src/main.cpp src/secondary.cpp include/types.hpp
 add_dependencies(test-cpp-project warnings options generate_reflection)
 target_compile_features(test-cpp-project PRIVATE cxx_std_20)
 target_compile_definitions(test-cpp-project PRIVATE CATCH_AMALGAMATED_CUSTOM_MAIN DONT_CRASH)
-target_include_directories(test-cpp-project PRIVATE include ${CMAKE_CURRENT_BINARY_DIR}/include)
+target_include_directories(test-cpp-project PRIVATE include ${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_SOURCE_DIR}/include)
 target_include_directories(test-cpp-project PRIVATE third-party/catch2/include)
 target_include_directories(test-cpp-project PRIVATE third-party/catch2/include/catch2)
 
