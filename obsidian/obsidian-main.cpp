@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <format>
 
 #include "opal/file-system.h"
 #include "opal/math-base.h"
@@ -359,14 +360,21 @@ CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXInd
     return translation_unit;
 }
 
+struct TranslationFailedException : Opal::Exception
+{
+    TranslationFailedException(const Opal::StringUtf8& file_path)
+        : Opal::Exception(Opal::StringEx("Failed to compile C++ file: ") + *file_path)
+    {
+    }
+};
+
 void ProcessTranslationUnit(CppContext& context, CXIndex index)
 {
     auto compile_options = Opal::ArrayView<Opal::StringUtf8>{context.arguments.compile_options};
     CXTranslationUnit translation_unit = ParseTranslationUnit(context.arguments.input_file, index, compile_options);
     if (translation_unit == nullptr)
     {
-        printf("Failed to compile %s", context.arguments.input_file.GetData());
-        exit(1);
+        throw TranslationFailedException(context.arguments.input_file);
     }
     CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
     clang_visitChildren(cursor, Visitor, &context);
