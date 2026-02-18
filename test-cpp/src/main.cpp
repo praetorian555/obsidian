@@ -260,6 +260,28 @@ TEST_CASE("Class reflection", "[refl][class]")
         REQUIRE(it->offset == offsetof(DataStruct, e));
         REQUIRE(it->size == sizeof(std::string));
     }
+    SECTION("Property descriptions")
+    {
+        auto it = Obs::Class<DataStruct>::Get().begin();
+        REQUIRE(strcmp(it->name, "a") == 0);
+        REQUIRE(strcmp(it->description, "The first value.") == 0);
+
+        ++it;
+        REQUIRE(strcmp(it->name, "b") == 0);
+        REQUIRE(strcmp(it->description, "The second value.") == 0);
+
+        ++it;
+        REQUIRE(strcmp(it->name, "c") == 0);
+        REQUIRE(strcmp(it->description, "") == 0);
+
+        ++it;
+        REQUIRE(strcmp(it->name, "d") == 0);
+        REQUIRE(strcmp(it->description, "") == 0);
+
+        ++it;
+        REQUIRE(strcmp(it->name, "e") == 0);
+        REQUIRE(strcmp(it->description, "") == 0);
+    }
     SECTION("Read properties")
     {
         DataStruct data;

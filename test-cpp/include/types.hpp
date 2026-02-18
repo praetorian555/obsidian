@@ -64,9 +64,11 @@ struct DataStruct
         C
     };
 
+    /// The first value.
     OBS_PROP("min=0", "max=100")
     int32_t a = 1;
 
+    /** The second value. */
     OBS_PROP()
     float b = 5.0f;
 
