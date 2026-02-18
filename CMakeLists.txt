@@ -72,3 +72,5 @@ add_custom_command(TARGET obsidian PRE_BUILD
         ${CMAKE_BINARY_DIR}/libclang.dll
         COMMENT "Copying libclang.dll to output directory"
 )
+
+add_subdirectory(test-cpp)

@@ -17,28 +17,15 @@ add_library(options INTERFACE)
 setup_compiler_warnings(warnings)
 setup_compiler_options(options)
 
-set(SYSTEM_INCLUDE_DIRS_ARG ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
-
-if (NOT SYSTEM_INCLUDE_DIRS_ARG)
-    set(SYSTEM_INCLUDE_DIRS_ARG "")
-else ()
-    set (SYSTEM_INCLUDE_DIRS_ARG --include-system-folders=${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
-endif()
-
 add_custom_target(
         generate_reflection
-        COMMAND ${CMAKE_COMMAND} -E echo "Building obsidian..."
-        COMMAND dotnet restore
-        COMMAND dotnet build obsidian.csproj --no-restore /p:Configuration=$<CONFIG> -o ${CMAKE_CURRENT_SOURCE_DIR}/bin/$<CONFIG>
-        COMMAND ${CMAKE_COMMAND} -E echo "Running obsidian..."
-        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/bin/$<CONFIG>/obsidian
-            --search-path=${CMAKE_CURRENT_SOURCE_DIR}/test-cpp/include
-            --destination-path=${CMAKE_CURRENT_BINARY_DIR}/include
-            --include-folders=${CMAKE_CURRENT_SOURCE_DIR}/include;${CMAKE_CURRENT_BINARY_DIR}/include
-            ${SYSTEM_INCLUDE_DIRS_ARG}
-            --defines=DONT_CRASH
-        WORKING_DIRECTORY ..
-        COMMENT "Generating reflection headers before building test cpp project..."
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/include
+        COMMAND $<TARGET_FILE:obsidian>
+            -input-file ${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+            -output-dir ${CMAKE_CURRENT_BINARY_DIR}/include
+            -compile-options "-DDONT_CRASH -I${CMAKE_CURRENT_SOURCE_DIR}/include"
+        DEPENDS obsidian
+        COMMENT "Generating reflection headers..."
         VERBATIM
 )
 

@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 
-#include "test-types.hpp"
+#include "obs/obs.hpp"
 
 #if !defined(DONT_CRASH)
 #error This should not happen!
