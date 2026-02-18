@@ -282,8 +282,6 @@ cmake/
 
 ### Missing Tests
 
-- **`ClassCollection` runtime API** — The runtime class lookup (`GetClassEntry`, `GetClassProperties`, `GetProperty`, `Read`, `Write`) is generated but has no test coverage.
-- **`is_pod` property flag** — Extracted for each property but never asserted in tests.
 - **Property descriptions** — Class property descriptions are generated but not tested.
 - **`class` vs `struct`** — Only structs are tested. Classes marked with `OBS_CLASS()` are not tested.
 - **Global namespace types** — All test types are in namespaces. Types in the global namespace are not tested.
