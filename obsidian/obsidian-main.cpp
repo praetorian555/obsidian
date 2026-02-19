@@ -181,8 +181,7 @@ CXChildVisitResult VisitorEnumConstant(CXCursor cursor, CXCursor parent, CXClien
     enum_constant.name = ToString(clang_getCursorSpelling(cursor));
     enum_constant.description = GetEnumConstantDescription(cursor);
     enum_constant.value = clang_getEnumConstantDeclValue(cursor);
-    Opal::GetLogger().Verbose("Obsidian", "  Detected enum constant: {} = {}", enum_constant.name.GetData(),
-                              enum_constant.value);
+    Opal::GetLogger().Verbose("Obsidian", "  Detected enum constant: {} = {}", enum_constant.name.GetData(), enum_constant.value);
     cpp_enum->constants.PushBack(Opal::Move(enum_constant));
 
     return CXChildVisit_Continue;
@@ -204,8 +203,7 @@ void VisitEnum(CXCursor cursor, CppContext& context)
         cpp_enum.underlying_type_size = clang_Type_getSizeOf(underlying_type);
         cpp_enum.is_enum_class = clang_EnumDecl_isScoped(cursor) != 0;
         CollectAttributes({tokens.data + 1, tokens.count - 1}, translation_unit, cpp_enum.attributes);
-        Opal::GetLogger().Verbose("Obsidian", "Detected enum: {} (attributes: {})", name.GetData(),
-                                  cpp_enum.attributes.GetSize());
+        Opal::GetLogger().Verbose("Obsidian", "Detected enum: {} (attributes: {})", name.GetData(), cpp_enum.attributes.GetSize());
         clang_visitChildren(cursor, VisitorEnumConstant, &cpp_enum);
 
         Opal::DynamicArray<Opal::StringUtf8> parents;
@@ -300,8 +298,7 @@ void VisitClass(CXCursor cursor, CppContext& context)
         cpp_class.alignment = clang_Type_getAlignOf(type);
         cpp_class.size = clang_Type_getSizeOf(type);
         CollectAttributes({tokens.data + 1, tokens.count - 1}, translation_unit, cpp_class.attributes);
-        Opal::GetLogger().Verbose("Obsidian", "Detected class: {} (attributes: {})", name.GetData(),
-                                  cpp_class.attributes.GetSize());
+        Opal::GetLogger().Verbose("Obsidian", "Detected class: {} (attributes: {})", name.GetData(), cpp_class.attributes.GetSize());
 
         clang_visitChildren(cursor, VisitorClassProperty, &cpp_class);
 
@@ -449,6 +446,16 @@ CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXInd
 void ProcessTranslationUnit(CppContext& context, CXIndex index, const Opal::StringUtf8& input_file)
 {
     auto compile_options = Opal::ArrayView<Opal::StringUtf8>{context.arguments.compile_options};
+    if (context.arguments.verbose)
+    {
+        Opal::StringUtf8 options_str;
+        for (Opal::u32 i = 0; i < compile_options.GetSize(); i++)
+        {
+            options_str += " ";
+            options_str += compile_options[i];
+        }
+        Opal::GetLogger().Verbose("Compiling with following options:{}", *options_str);
+    }
     CXTranslationUnit translation_unit = ParseTranslationUnit(input_file, index, compile_options);
     CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
     clang_visitChildren(cursor, Visitor, &context);
@@ -462,9 +469,8 @@ void Run(ObsidianArguments& arguments)
     CppContext context{.arguments = arguments};
     if (!arguments.input_file.IsEmpty())
     {
-        Opal::GetLogger().Info("Obsidian", "Processing file: {}", arguments.input_file.GetData());
+        Opal::GetLogger().Info("Obsidian", "Compiling file: {}", arguments.input_file.GetData());
         ProcessTranslationUnit(context, index, arguments.input_file);
-        Opal::GetLogger().Info("Obsidian", "Successfully compiled: {}", arguments.input_file.GetData());
         context.input_files.PushBack(arguments.input_file);
     }
     else if (!arguments.input_dir.IsEmpty())
@@ -482,14 +488,13 @@ void Run(ObsidianArguments& arguments)
             {
                 continue;
             }
-            Opal::GetLogger().Info("Obsidian", "Processing file: {}", entries[i].path.GetData());
+            Opal::GetLogger().Info("Obsidian", "Compiling file: {}", entries[i].path.GetData());
             ProcessTranslationUnit(context, index, entries[i].path);
-            Opal::GetLogger().Info("Obsidian", "Successfully compiled: {}", entries[i].path.GetData());
             context.input_files.PushBack(entries[i].path);
         }
     }
 
-    Opal::GetLogger().Info("Obsidian", "Found {} enums and {} classes", context.enums.GetSize(), context.classes.GetSize());
+    Opal::GetLogger().Verbose("Obsidian", "Found {} enums and {} classes", context.enums.GetSize(), context.classes.GetSize());
 
     if (context.arguments.should_dump_ast)
     {
@@ -500,7 +505,6 @@ void Run(ObsidianArguments& arguments)
     {
         Opal::GetLogger().Info("Obsidian", "Generating reflection data...");
         Generate(context);
-        Opal::GetLogger().Info("Obsidian", "Reflection data generated successfully");
     }
 
     clang_disposeIndex(index);
@@ -556,6 +560,9 @@ int main(int argc, const char** argv)
 
     try
     {
+        auto version =  ToString(clang_getClangVersion());
+        Opal::GetLogger().Info("Obsidian", "{}", *version);
+
         ObsidianArguments arguments = ParseAndValidateArguments(argc, argv);
         if (arguments.verbose)
         {
