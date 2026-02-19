@@ -1,6 +1,4 @@
 #include <cstdio>
-#include <cstdlib>
-#include <format>
 
 #include "opal/file-system.h"
 #include "opal/logging.h"
@@ -397,14 +395,6 @@ CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXInd
     return translation_unit;
 }
 
-struct TranslationFailedException : Opal::Exception
-{
-    TranslationFailedException(const Opal::StringUtf8& file_path)
-        : Opal::Exception(Opal::StringEx("Failed to compile C++ file: ") + *file_path)
-    {
-    }
-};
-
 void ProcessTranslationUnit(CppContext& context, CXIndex index, const Opal::StringUtf8& input_file)
 {
     auto compile_options = Opal::ArrayView<Opal::StringUtf8>{context.arguments.compile_options};
@@ -462,19 +452,14 @@ void Run(ObsidianArguments& arguments)
     if (!context.arguments.output_dir.IsEmpty())
     {
         Opal::GetLogger().Info("Obsidian", "Generating reflection data...");
-        if (!Generate(context))
-        {
-            clang_disposeIndex(index);
-            throw Opal::Exception("Failed to generate reflection data");
-            return;
-        }
+        Generate(context);
         Opal::GetLogger().Info("Obsidian", "Reflection data generated successfully");
     }
 
     clang_disposeIndex(index);
 }
 
-int main(int argc, const char** argv)
+ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
 {
     ObsidianArguments arguments;
     Opal::ProgramArgumentsBuilder builder;
@@ -490,45 +475,50 @@ int main(int argc, const char** argv)
 
     if (!builder.Build(argv, static_cast<Opal::u32>(argc)))
     {
-        printf("Failed to build program arguments\n");
-        return 1;
+        throw ArgumentValidationException("Failed to build program arguments");
     }
 
     if (!arguments.input_file.IsEmpty() && !arguments.input_dir.IsEmpty())
     {
-        printf("Error: You must specify either input-file or input-dir, not both\n");
-        return 1;
+        throw ArgumentValidationException("You must specify either input-file or input-dir, not both");
     }
     if (!arguments.input_file.IsEmpty() && !Opal::Exists(arguments.input_file))
     {
-        printf("Error: Input file does not exist\n");
-        return 1;
+        throw ArgumentValidationException("Input file does not exist");
     }
     if (!arguments.input_dir.IsEmpty() && !Opal::Exists(arguments.input_dir))
     {
-        printf("Error: Input directory does not exist\n");
-        return 1;
+        throw ArgumentValidationException("Input directory does not exist");
     }
     if (!arguments.output_dir.IsEmpty() && !Opal::Exists(arguments.output_dir))
     {
-        printf("Error: Output directory does not exist\n");
-        return 1;
+        throw ArgumentValidationException("Output directory does not exist");
     }
 
+    return arguments;
+}
+
+int main(int argc, const char** argv)
+{
     Opal::Logger logger;
     auto sink = Opal::MakeShared<Opal::LogSink, Opal::ConsoleSink>(nullptr);
     logger.AddSink(sink);
-    Opal::LogLevel log_level = arguments.verbose ? Opal::LogLevel::Verbose : Opal::LogLevel::Info;
-    logger.RegisterCategory("Obsidian", log_level);
+    logger.RegisterCategory("Obsidian", Opal::LogLevel::Info);
     Opal::SetLogger(&logger);
 
     try
     {
+        ObsidianArguments arguments = ParseAndValidateArguments(argc, argv);
+        if (arguments.verbose)
+        {
+            logger.SetCategoryLevel("Obsidian", Opal::LogLevel::Verbose);
+        }
         Run(arguments);
     }
     catch (const Opal::Exception& e)
     {
-        std::printf("%s", *e.What());
+        Opal::GetLogger().Error("Obsidian", "{}", *e.What());
+        Opal::GetLogger().Flush();
         return 1;
     }
     return 0;

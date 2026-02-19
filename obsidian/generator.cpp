@@ -316,14 +316,8 @@ static Opal::StringUtf8 GenerateSingleFile(const CppContext& context)
     return result;
 }
 
-bool Generate(const CppContext& context)
+void Generate(const CppContext& context)
 {
-    if (context.arguments.output_dir.IsEmpty())
-    {
-        Opal::GetLogger().Error("Obsidian", "Output directory is not set!");
-        return false;
-    }
-
     if (!Opal::Exists(context.arguments.output_dir))
     {
         Opal::CreateDirectory(context.arguments.output_dir);
@@ -336,8 +330,7 @@ bool Generate(const CppContext& context)
         Opal::GetLogger().Info("Obsidian", "Writing reflection file: {}", output_path.GetData());
         if (!WriteToFile(output_path, content))
         {
-            Opal::GetLogger().Error("Obsidian", "Failed to write reflection file: {}", output_path.GetData());
-            return false;
+            throw FileWriteException(output_path);
         }
     }
 
@@ -346,9 +339,6 @@ bool Generate(const CppContext& context)
     Opal::GetLogger().Info("Obsidian", "Writing obs.h: {}", obs_path.GetData());
     if (!WriteToFile(obs_path, Opal::StringUtf8(ObsTemplates::k_obs_header)))
     {
-        Opal::GetLogger().Error("Obsidian", "Failed to write obs.h: {}", obs_path.GetData());
-        return false;
+        throw FileWriteException(obs_path);
     }
-
-    return true;
 }

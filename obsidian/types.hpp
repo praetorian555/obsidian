@@ -3,6 +3,7 @@
 #include "opal/types.h"
 #include "opal/container/dynamic-array.h"
 #include "opal/container/string.h"
+#include "opal/exceptions.h"
 
 using i8 = Opal::i8;
 using i16 = Opal::i16;
@@ -89,4 +90,25 @@ struct CppContext
     Opal::DynamicArray<Opal::StringUtf8> input_files;
     Opal::DynamicArray<CppEnum> enums;
     Opal::DynamicArray<CppClass> classes;
+};
+
+struct ArgumentValidationException : Opal::Exception
+{
+    explicit ArgumentValidationException(const char* message) : Opal::Exception(Opal::StringEx(message)) {}
+};
+
+struct TranslationFailedException : Opal::Exception
+{
+    explicit TranslationFailedException(const Opal::StringUtf8& file_path)
+        : Opal::Exception(Opal::StringEx("Failed to compile C++ file: ") + *file_path)
+    {
+    }
+};
+
+struct FileWriteException : Opal::Exception
+{
+    explicit FileWriteException(const Opal::StringUtf8& file_path)
+        : Opal::Exception(Opal::StringEx("Failed to write file: ") + *file_path)
+    {
+    }
 };

@@ -2,4 +2,4 @@
 
 struct CppContext;
 
-bool Generate(const CppContext& context);
+void Generate(const CppContext& context);
