@@ -62,3 +62,9 @@ target_include_directories(test-cpp-project-dir PRIVATE third-party/catch2/inclu
 enable_testing()
 add_test(NAME cpp_test COMMAND test-cpp-project)
 add_test(NAME cpp_test_dir COMMAND test-cpp-project-dir)
+add_test(NAME cpp_test_compile_error
+    COMMAND $<TARGET_FILE:obsidian>
+        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include-error/error-types.hpp
+        compile-options=-I${CMAKE_CURRENT_SOURCE_DIR}/include,-I${CMAKE_SOURCE_DIR}/include
+)
+set_tests_properties(cpp_test_compile_error PROPERTIES WILL_FAIL TRUE)

@@ -391,7 +391,42 @@ CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXInd
     Opal::GetLogger().Verbose("Obsidian", "Compile options: {}", options_str.GetData());
     CXTranslationUnit translation_unit = clang_parseTranslationUnit(index, input_file.GetData(), args_array.GetData(), args_array.GetSize(),
                                                                     nullptr, 0, CXTranslationUnit_DetailedPreprocessingRecord);
-    // TODO: Check diagnostics messages and fail the compilation if there are errors
+
+    if (translation_unit == nullptr)
+    {
+        throw TranslationFailedException(input_file);
+    }
+
+    bool has_errors = false;
+    Opal::u32 num_diagnostics = clang_getNumDiagnostics(translation_unit);
+    for (Opal::u32 i = 0; i < num_diagnostics; i++)
+    {
+        CXDiagnostic diagnostic = clang_getDiagnostic(translation_unit, i);
+        CXDiagnosticSeverity severity = clang_getDiagnosticSeverity(diagnostic);
+        Opal::StringUtf8 message = ToString(clang_formatDiagnostic(diagnostic, clang_defaultDiagnosticDisplayOptions()));
+        clang_disposeDiagnostic(diagnostic);
+
+        if (severity >= CXDiagnostic_Error)
+        {
+            Opal::GetLogger().Error("Obsidian", "{}", message.GetData());
+            has_errors = true;
+        }
+        else if (severity == CXDiagnostic_Warning)
+        {
+            Opal::GetLogger().Warning("Obsidian", "{}", message.GetData());
+        }
+        else if (severity == CXDiagnostic_Note)
+        {
+            Opal::GetLogger().Verbose("Obsidian", "{}", message.GetData());
+        }
+    }
+
+    if (has_errors)
+    {
+        clang_disposeTranslationUnit(translation_unit);
+        throw TranslationFailedException(input_file);
+    }
+
     return translation_unit;
 }
 
@@ -399,10 +434,6 @@ void ProcessTranslationUnit(CppContext& context, CXIndex index, const Opal::Stri
 {
     auto compile_options = Opal::ArrayView<Opal::StringUtf8>{context.arguments.compile_options};
     CXTranslationUnit translation_unit = ParseTranslationUnit(input_file, index, compile_options);
-    if (translation_unit == nullptr)
-    {
-        throw TranslationFailedException(input_file);
-    }
     CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
     clang_visitChildren(cursor, Visitor, &context);
     clang_disposeTranslationUnit(translation_unit);
