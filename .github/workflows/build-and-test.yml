@@ -15,12 +15,6 @@ jobs:
       matrix:
         configuration: [Debug, RelWithDebInfo, Release]
         hardening: [OFF]
-        include:
-          - configuration: Debug
-            hardening: ON
-        exclude:
-          - configuration: Debug
-            hardening: OFF
 
     steps:
     - name: Checkout source
