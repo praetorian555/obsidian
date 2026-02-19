@@ -548,6 +548,7 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
 int main(int argc, const char** argv)
 {
     Opal::Logger logger;
+    logger.SetPattern("<level>: <message>\n");
     auto sink = Opal::MakeShared<Opal::LogSink, Opal::ConsoleSink>(nullptr);
     logger.AddSink(sink);
     logger.RegisterCategory("Obsidian", Opal::LogLevel::Info);
