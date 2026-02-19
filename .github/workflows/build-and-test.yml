@@ -40,8 +40,5 @@ jobs:
     - name: Build
       run: cmake --build ${{ github.workspace }}/build --config ${{ matrix.configuration }}
 
-    - name: Run test-cpp-project
-      run: ${{ github.workspace }}/build/test-cpp/${{ matrix.configuration }}/test-cpp-project.exe
-
-    - name: Run test-cpp-project-dir
-      run: ${{ github.workspace }}/build/test-cpp/${{ matrix.configuration }}/test-cpp-project-dir.exe
+    - name: Run tests
+      run: ctest --test-dir ${{ github.workspace }}/build/test-cpp -C ${{ matrix.configuration }} --output-on-failure
