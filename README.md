@@ -280,10 +280,6 @@ cmake/
 - **Separate-files output mode** — The `separate-files` flag is parsed but the code path is not implemented. When enabled, each enum/class should get its own generated header, plus dedicated headers for `EnumCollection` and `ClassCollection`.
 - **Simplified compile arguments** — Add dedicated CLI options for common Clang settings: `std` (C++ standard version, e.g. `std=c++20`), `error-level` (Clang warning level), and `include-paths` (comma-separated include directories, automatically prefixed with `-I`). The existing `compile-options` would remain for passing additional arbitrary flags.
 
-### Missing Tests
-
-- **Error cases** — No tests for malformed attributes.
-
 ## AI Disclosure
 
 Portions of this software were developed with the assistance of AI tools (Claude by Anthropic). All AI-generated code was reviewed and approved by human contributors.

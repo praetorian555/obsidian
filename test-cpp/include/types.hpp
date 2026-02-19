@@ -129,3 +129,21 @@ public:
 
 } // SecondNamespace
 } // FirstNamespace
+
+// Types with malformed/edge-case attributes for testing attribute parsing robustness.
+
+OBS_ENUM("", "multi=a=b", "standalone")
+enum class MalformedAttrEnum : int32_t
+{
+    Value1,
+};
+
+OBS_CLASS("=", "valid=yes")
+struct MalformedAttrStruct
+{
+    OBS_PROP("")
+    int32_t x = 0;
+
+    OBS_PROP("a=b=c", "simple")
+    int32_t y = 0;
+};

@@ -105,8 +105,24 @@ void CollectAttributes(const Opal::ArrayView<CXToken>& tokens, const CXTranslati
                     {
                         parameter = Opal::GetSubString(parameter, 1, parameter.GetSize() - 2).GetValue();
                     }
+                    if (parameter.IsEmpty())
+                    {
+                        Opal::GetLogger().Warning("Obsidian", "Skipping empty attribute");
+                        break;
+                    }
                     CppAttribute attribute;
                     Opal::Split<Opal::StringUtf8>(parameter, "=", attribute.name, attribute.value);
+                    if (attribute.name.IsEmpty())
+                    {
+                        Opal::GetLogger().Warning("Obsidian", "Skipping malformed attribute: {}", parameter.GetData());
+                        break;
+                    }
+                    if (!attribute.value.IsEmpty() && Opal::Find(attribute.value, '=') != Opal::StringUtf8::k_npos)
+                    {
+                        Opal::GetLogger().Warning("Obsidian", "Skipping malformed attribute with multiple '=' signs: {}",
+                                                  parameter.GetData());
+                        break;
+                    }
                     if (attribute.value.IsEmpty())
                     {
                         attribute.value = "1";

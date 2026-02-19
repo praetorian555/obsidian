@@ -760,3 +760,78 @@ TEST_CASE("Empty types", "[refl][empty]")
         REQUIRE(entry->properties.empty());
     }
 }
+
+TEST_CASE("Malformed attributes", "[refl][attributes][malformed]")
+{
+    SECTION("Enum with edge-case attributes")
+    {
+        // OBS_ENUM("", "multi=a=b", "standalone")
+        // Empty and multiple '=' attributes are skipped, only "standalone" remains
+        const auto& attrs = Obs::Enum<MalformedAttrEnum>::GetAttributes();
+        REQUIRE(attrs.size() == 1);
+
+        // Key-only: value defaults to "1"
+        REQUIRE(strcmp(attrs[0].name, "standalone") == 0);
+        REQUIRE(strcmp(attrs[0].value, "1") == 0);
+    }
+    SECTION("Enum edge-case HasAttribute and GetAttributeValue")
+    {
+        // Malformed attributes are skipped
+        REQUIRE(!Obs::Enum<MalformedAttrEnum>::HasAttribute("multi"));
+
+        REQUIRE(Obs::Enum<MalformedAttrEnum>::HasAttribute("standalone"));
+        REQUIRE(strcmp(Obs::Enum<MalformedAttrEnum>::GetAttributeValue("standalone"), "1") == 0);
+
+        REQUIRE(!Obs::Enum<MalformedAttrEnum>::HasAttribute("nonexistent"));
+    }
+    SECTION("Class with edge-case attributes")
+    {
+        // OBS_CLASS("=", "valid=yes")
+        // "=" is skipped (empty name), only "valid=yes" remains
+        const auto& attrs = Obs::Class<MalformedAttrStruct>::GetAttributes();
+        REQUIRE(attrs.size() == 1);
+
+        REQUIRE(strcmp(attrs[0].name, "valid") == 0);
+        REQUIRE(strcmp(attrs[0].value, "yes") == 0);
+    }
+    SECTION("Property with empty string attribute")
+    {
+        // OBS_PROP("") - empty attribute is skipped
+        auto it = Obs::Class<MalformedAttrStruct>::Get().begin();
+        REQUIRE(strcmp(it->name, "x") == 0);
+        REQUIRE(it->attributes.size() == 0);
+    }
+    SECTION("Property with multiple '=' and key-only attribute")
+    {
+        // OBS_PROP("a=b=c", "simple")
+        // "a=b=c" is skipped (multiple '='), only "simple" remains
+        auto it = Obs::Class<MalformedAttrStruct>::Get().begin() + 1;
+        REQUIRE(strcmp(it->name, "y") == 0);
+        REQUIRE(it->attributes.size() == 1);
+
+        // "simple": key-only, value defaults to "1"
+        REQUIRE(strcmp(it->attributes[0].name, "simple") == 0);
+        REQUIRE(strcmp(it->attributes[0].value, "1") == 0);
+    }
+    SECTION("Enum collection edge-case attributes")
+    {
+        const Obs::EnumEntry* entry = nullptr;
+        REQUIRE(Obs::EnumCollection::GetEnum("MalformedAttrEnum", entry));
+        REQUIRE(entry->attributes.size() == 1);
+        REQUIRE(!entry->HasAttribute("multi"));
+        REQUIRE(entry->HasAttribute("standalone"));
+    }
+    SECTION("Class collection edge-case attributes")
+    {
+        const Obs::ClassEntry* entry = nullptr;
+        REQUIRE(Obs::ClassCollection::GetClassEntry("MalformedAttrStruct", entry));
+        REQUIRE(entry->HasAttribute("valid"));
+        REQUIRE(strcmp(entry->GetAttributeValue("valid"), "yes") == 0);
+
+        const Obs::Property* prop = nullptr;
+        REQUIRE(Obs::ClassCollection::GetProperty(*entry, "y", prop));
+        REQUIRE(!prop->HasAttribute("a"));
+        REQUIRE(prop->HasAttribute("simple"));
+        REQUIRE(strcmp(prop->GetAttributeValue("simple"), "1") == 0);
+    }
+}
