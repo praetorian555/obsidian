@@ -278,11 +278,11 @@ cmake/
 ### Features
 
 - **Separate-files output mode** — The `separate-files` flag is parsed but the code path is not implemented. When enabled, each enum/class should get its own generated header, plus dedicated headers for `EnumCollection` and `ClassCollection`.
-- **Clang diagnostic checking** — The parser does not check for Clang compilation errors/warnings after parsing a translation unit. Invalid input files are silently accepted.
+- **Simplified compile arguments** — Add dedicated CLI options for common Clang settings: `std` (C++ standard version, e.g. `std=c++20`), `error-level` (Clang warning level), and `include-paths` (comma-separated include directories, automatically prefixed with `-I`). The existing `compile-options` would remain for passing additional arbitrary flags.
 
 ### Missing Tests
 
-- **Error cases** — No tests for invalid input files, missing macros, or malformed attributes.
+- **Error cases** — No tests for malformed attributes.
 
 ## AI Disclosure
 
