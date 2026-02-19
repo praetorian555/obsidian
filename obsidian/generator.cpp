@@ -5,8 +5,9 @@
 #include <cstdio>
 #include <cstring>
 
-#include "opal/paths.h"
 #include "opal/file-system.h"
+#include "opal/logging.h"
+#include "opal/paths.h"
 
 static Opal::StringUtf8 ReplaceAll(const Opal::StringUtf8& source, const char* placeholder, const Opal::StringUtf8& replacement)
 {
@@ -319,7 +320,7 @@ bool Generate(const CppContext& context)
 {
     if (context.arguments.output_dir.IsEmpty())
     {
-        printf("Error: Output directory is not set!\n");
+        Opal::GetLogger().Error("Obsidian", "Output directory is not set!");
         return false;
     }
 
@@ -332,18 +333,20 @@ bool Generate(const CppContext& context)
     {
         Opal::StringUtf8 content = GenerateSingleFile(context);
         Opal::StringUtf8 output_path = context.arguments.output_dir + "/reflection.hpp";
+        Opal::GetLogger().Info("Obsidian", "Writing reflection file: {}", output_path.GetData());
         if (!WriteToFile(output_path, content))
         {
-            printf("Error: Failed to write reflection file: %s\n", output_path.GetData());
+            Opal::GetLogger().Error("Obsidian", "Failed to write reflection file: {}", output_path.GetData());
             return false;
         }
     }
 
     // Write obs.h
     Opal::StringUtf8 obs_path = context.arguments.output_dir + "/obs.h";
+    Opal::GetLogger().Info("Obsidian", "Writing obs.h: {}", obs_path.GetData());
     if (!WriteToFile(obs_path, Opal::StringUtf8(ObsTemplates::k_obs_header)))
     {
-        printf("Error: Failed to write obs.h: %s\n", obs_path.GetData());
+        Opal::GetLogger().Error("Obsidian", "Failed to write obs.h: {}", obs_path.GetData());
         return false;
     }
 

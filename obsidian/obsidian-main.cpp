@@ -3,6 +3,7 @@
 #include <format>
 
 #include "opal/file-system.h"
+#include "opal/logging.h"
 #include "opal/math-base.h"
 #include "opal/paths.h"
 #include "opal/program-arguments.h"
@@ -86,7 +87,7 @@ void CollectAttributes(const Opal::ArrayView<CXToken>& tokens, const CXTranslati
             {
                 if (token_name != "(")
                 {
-                    printf("Bad token detected! Expected '('...");
+                    Opal::GetLogger().Error("Obsidian", "Bad token detected! Expected '('...");
                     return;
                 }
                 state = StateMachine::CollectAttributes;
@@ -166,6 +167,8 @@ CXChildVisitResult VisitorEnumConstant(CXCursor cursor, CXCursor parent, CXClien
     enum_constant.name = ToString(clang_getCursorSpelling(cursor));
     enum_constant.description = GetEnumConstantDescription(cursor);
     enum_constant.value = clang_getEnumConstantDeclValue(cursor);
+    Opal::GetLogger().Verbose("Obsidian", "  Detected enum constant: {} = {}", enum_constant.name.GetData(),
+                              enum_constant.value);
     cpp_enum->constants.PushBack(Opal::Move(enum_constant));
 
     return CXChildVisit_Continue;
@@ -187,6 +190,8 @@ void VisitEnum(CXCursor cursor, CppContext& context)
         cpp_enum.underlying_type_size = clang_Type_getSizeOf(underlying_type);
         cpp_enum.is_enum_class = clang_EnumDecl_isScoped(cursor) != 0;
         CollectAttributes({tokens.data + 1, tokens.count - 1}, translation_unit, cpp_enum.attributes);
+        Opal::GetLogger().Verbose("Obsidian", "Detected enum: {} (attributes: {})", name.GetData(),
+                                  cpp_enum.attributes.GetSize());
         clang_visitChildren(cursor, VisitorEnumConstant, &cpp_enum);
 
         Opal::DynamicArray<Opal::StringUtf8> parents;
@@ -256,6 +261,8 @@ CXChildVisitResult VisitorClassProperty(CXCursor cursor, CXCursor parent, CXClie
     property.offset = clang_Cursor_getOffsetOfField(cursor) / 8;
     property.size = clang_Type_getSizeOf(type);
     CollectAttributes({tokens.data + 1, tokens.count - 1}, translation_unit, property.attributes);
+    Opal::GetLogger().Verbose("Obsidian", "  Detected property: {} (type: {}, attributes: {})", property.name.GetData(),
+                              property.type.GetData(), property.attributes.GetSize());
 
     auto* cpp_class = static_cast<CppClass*>(client_data);
     cpp_class->properties.PushBack(Opal::Move(property));
@@ -279,6 +286,8 @@ void VisitClass(CXCursor cursor, CppContext& context)
         cpp_class.alignment = clang_Type_getAlignOf(type);
         cpp_class.size = clang_Type_getSizeOf(type);
         CollectAttributes({tokens.data + 1, tokens.count - 1}, translation_unit, cpp_class.attributes);
+        Opal::GetLogger().Verbose("Obsidian", "Detected class: {} (attributes: {})", name.GetData(),
+                                  cpp_class.attributes.GetSize());
 
         clang_visitChildren(cursor, VisitorClassProperty, &cpp_class);
 
@@ -371,13 +380,17 @@ void DumpAst(const CppContext& context)
 CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXIndex index, Opal::ArrayView<Opal::StringUtf8> args)
 {
     Opal::DynamicArray<const char*> args_array(args.GetSize());
-    printf("Using following compile options:");
+    Opal::StringUtf8 options_str;
     for (Opal::u32 i = 0; i < args.GetSize(); i++)
     {
         args_array[i] = args[i].GetData();
-        printf(" %s", args[i].GetData());
+        if (i > 0)
+        {
+            options_str += " ";
+        }
+        options_str += args[i];
     }
-    printf("\n");
+    Opal::GetLogger().Verbose("Obsidian", "Compile options: {}", options_str.GetData());
     CXTranslationUnit translation_unit = clang_parseTranslationUnit(index, input_file.GetData(), args_array.GetData(), args_array.GetSize(),
                                                                     nullptr, 0, CXTranslationUnit_DetailedPreprocessingRecord);
     // TODO: Check diagnostics messages and fail the compilation if there are errors
@@ -412,7 +425,9 @@ void Run(ObsidianArguments& arguments)
     CppContext context{.arguments = arguments};
     if (!arguments.input_file.IsEmpty())
     {
+        Opal::GetLogger().Info("Obsidian", "Processing file: {}", arguments.input_file.GetData());
         ProcessTranslationUnit(context, index, arguments.input_file);
+        Opal::GetLogger().Info("Obsidian", "Successfully compiled: {}", arguments.input_file.GetData());
         context.input_files.PushBack(arguments.input_file);
     }
     else if (!arguments.input_dir.IsEmpty())
@@ -430,11 +445,14 @@ void Run(ObsidianArguments& arguments)
             {
                 continue;
             }
-            printf("Processing file: %s\n", entries[i].path.GetData());
+            Opal::GetLogger().Info("Obsidian", "Processing file: {}", entries[i].path.GetData());
             ProcessTranslationUnit(context, index, entries[i].path);
+            Opal::GetLogger().Info("Obsidian", "Successfully compiled: {}", entries[i].path.GetData());
             context.input_files.PushBack(entries[i].path);
         }
     }
+
+    Opal::GetLogger().Info("Obsidian", "Found {} enums and {} classes", context.enums.GetSize(), context.classes.GetSize());
 
     if (context.arguments.should_dump_ast)
     {
@@ -443,12 +461,14 @@ void Run(ObsidianArguments& arguments)
 
     if (!context.arguments.output_dir.IsEmpty())
     {
+        Opal::GetLogger().Info("Obsidian", "Generating reflection data...");
         if (!Generate(context))
         {
             clang_disposeIndex(index);
             throw Opal::Exception("Failed to generate reflection data");
             return;
         }
+        Opal::GetLogger().Info("Obsidian", "Reflection data generated successfully");
     }
 
     clang_disposeIndex(index);
@@ -465,7 +485,8 @@ int main(int argc, const char** argv)
         .AddArgumentDefinition(arguments.output_dir, {"output-dir", "Path to the output directory for generated headers", true})
         .AddArgumentDefinition(arguments.should_dump_ast, {"dump-ast", "Dump the extracted AST metadata", true})
         .AddArgumentDefinition(arguments.use_separate_files, {"separate-files", "Generate separate files for each type", true})
-        .AddArgumentDefinition(arguments.compile_options, {"compile-options", "Comma-separated list of compile options", true});
+        .AddArgumentDefinition(arguments.compile_options, {"compile-options", "Comma-separated list of compile options", true})
+        .AddArgumentDefinition(arguments.verbose, {"verbose", "Enable verbose logging output", true});
 
     if (!builder.Build(argv, static_cast<Opal::u32>(argc)))
     {
@@ -493,6 +514,13 @@ int main(int argc, const char** argv)
         printf("Error: Output directory does not exist\n");
         return 1;
     }
+
+    Opal::Logger logger;
+    auto sink = Opal::MakeShared<Opal::LogSink, Opal::ConsoleSink>(nullptr);
+    logger.AddSink(sink);
+    Opal::LogLevel log_level = arguments.verbose ? Opal::LogLevel::Verbose : Opal::LogLevel::Info;
+    logger.RegisterCategory("Obsidian", log_level);
+    Opal::SetLogger(&logger);
 
     try
     {

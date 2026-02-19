@@ -80,6 +80,7 @@ struct ObsidianArguments
     Opal::DynamicArray<Opal::StringUtf8> compile_options;
     bool should_dump_ast = false;
     bool use_separate_files = false;
+    bool verbose = false;
 };
 
 struct CppContext
