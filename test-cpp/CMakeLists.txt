@@ -98,7 +98,80 @@ add_obsidian_test(
     OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/include-error
     OBSIDIAN_ARGS
         input-file=${CMAKE_CURRENT_SOURCE_DIR}/include-error/error-types.hpp
+        output-dir=${CMAKE_CURRENT_BINARY_DIR}/include-error
         compile-options=-Wall
         inc-dirs=${INCLUDE_DIRECTORIES}
+    EXPECTED_EXIT_CODE 1
+)
+
+# ---- Category 1: Argument validation tests ----
+
+# 1.1 Neither input-file nor input-dir provided
+add_obsidian_test(
+    NAME cpp_test_no_input
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arg-validation
+    OBSIDIAN_ARGS
+        output-dir=${CMAKE_CURRENT_BINARY_DIR}/arg-validation
+    EXPECTED_EXIT_CODE 1
+)
+
+# 1.2 Both input-file and input-dir provided
+add_obsidian_test(
+    NAME cpp_test_both_inputs
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arg-validation
+    OBSIDIAN_ARGS
+        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+        input-dir=${CMAKE_CURRENT_SOURCE_DIR}/include
+        output-dir=${CMAKE_CURRENT_BINARY_DIR}/arg-validation
+    EXPECTED_EXIT_CODE 1
+)
+
+# 1.3 Non-existent input file
+add_obsidian_test(
+    NAME cpp_test_bad_input_file
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arg-validation
+    OBSIDIAN_ARGS
+        input-file=${CMAKE_CURRENT_SOURCE_DIR}/does-not-exist.hpp
+        output-dir=${CMAKE_CURRENT_BINARY_DIR}/arg-validation
+    EXPECTED_EXIT_CODE 1
+)
+
+# 1.4 Non-existent input directory
+add_obsidian_test(
+    NAME cpp_test_bad_input_dir
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arg-validation
+    OBSIDIAN_ARGS
+        input-dir=${CMAKE_CURRENT_SOURCE_DIR}/does-not-exist
+        output-dir=${CMAKE_CURRENT_BINARY_DIR}/arg-validation
+    EXPECTED_EXIT_CODE 1
+)
+
+# 1.5 Non-existent output directory
+add_obsidian_test(
+    NAME cpp_test_bad_output_dir
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arg-validation
+    OBSIDIAN_ARGS
+        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+        output-dir=${CMAKE_CURRENT_BINARY_DIR}/this-output-dir-does-not-exist
+    EXPECTED_EXIT_CODE 1
+)
+
+# 1.6 Missing output directory argument
+add_obsidian_test(
+    NAME cpp_test_missing_output_dir
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arg-validation
+    OBSIDIAN_ARGS
+        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+    EXPECTED_EXIT_CODE 1
+)
+
+# 1.7 Invalid C++ standard
+add_obsidian_test(
+    NAME cpp_test_bad_std
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arg-validation
+    OBSIDIAN_ARGS
+        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+        output-dir=${CMAKE_CURRENT_BINARY_DIR}/arg-validation
+        std=c++99
     EXPECTED_EXIT_CODE 1
 )

@@ -561,6 +561,10 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
     {
         throw ArgumentValidationException("Input directory does not exist");
     }
+    if (arguments.input_file.IsEmpty() && arguments.input_dir.IsEmpty())
+    {
+        throw ArgumentValidationException("Neither input file nor input directory were provided");
+    }
     if (arguments.output_dir.IsEmpty())
     {
         throw ArgumentValidationException("Output directory not specified");
