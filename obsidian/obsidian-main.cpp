@@ -388,10 +388,10 @@ void DumpAst(const CppContext& context)
     }
 }
 
-CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXIndex index, ObsidianArguments& program_arguments)
+Opal::DynamicArray<const char*> BuildClangArgs(const ObsidianArguments& program_arguments)
 {
     Opal::DynamicArray<const char*> args_array;
-    args_array.Reserve(program_arguments.compile_options.GetSize() + program_arguments.include_directories.GetSize() + 1);
+    args_array.Reserve(program_arguments.compile_options.GetSize() + program_arguments.include_directories_as_option.GetSize() + 1);
     args_array.PushBack(*program_arguments.standard_version_as_option);
     for (const auto& option : program_arguments.compile_options)
     {
@@ -401,7 +401,25 @@ CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXInd
     {
         args_array.PushBack(*dir);
     }
+    if (program_arguments.verbose)
+    {
+        Opal::StringUtf8 options_str;
+        for (Opal::u64 i = 0; i < args_array.GetSize(); i++)
+        {
+            if (i > 0)
+            {
+                options_str += " ";
+            }
+            options_str += args_array[i];
+        }
+        Opal::GetLogger().Verbose("Obsidian", "Clang compile options: {}", *options_str);
+    }
+    return args_array;
+}
 
+CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXIndex index,
+                                        const Opal::DynamicArray<const char*>& args_array)
+{
     CXTranslationUnit translation_unit;
     CXErrorCode error_code = clang_parseTranslationUnit2(index, input_file.GetData(), args_array.GetData(), args_array.GetSize(), nullptr,
                                                          0, CXTranslationUnit_DetailedPreprocessingRecord, &translation_unit);
@@ -446,27 +464,10 @@ CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXInd
     return translation_unit;
 }
 
-void ProcessTranslationUnit(CppContext& context, CXIndex index, const Opal::StringUtf8& input_file)
+void ProcessTranslationUnit(CppContext& context, CXIndex index, const Opal::StringUtf8& input_file,
+                            const Opal::DynamicArray<const char*>& clang_args)
 {
-    if (context.arguments.verbose)
-    {
-        auto compile_options = Opal::ArrayView<Opal::StringUtf8>{context.arguments.compile_options};
-
-        Opal::StringUtf8 options_str;
-        options_str += context.arguments.standard_version_as_option;
-        for (Opal::u32 i = 0; i < compile_options.GetSize(); i++)
-        {
-            options_str += " ";
-            options_str += compile_options[i];
-        }
-        for (const auto& dir : context.arguments.include_directories_as_option)
-        {
-            options_str += " ";
-            options_str += dir;
-        }
-        Opal::GetLogger().Verbose("Obsidian", "Compiling with following options: {}", *options_str);
-    }
-    CXTranslationUnit translation_unit = ParseTranslationUnit(input_file, index, context.arguments);
+    CXTranslationUnit translation_unit = ParseTranslationUnit(input_file, index, clang_args);
     CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
     clang_visitChildren(cursor, Visitor, &context);
     clang_disposeTranslationUnit(translation_unit);
@@ -477,10 +478,11 @@ void Run(ObsidianArguments& arguments)
     CXIndex index = clang_createIndex(0, 0);
 
     CppContext context{.arguments = arguments};
+    Opal::DynamicArray<const char*> clang_args = BuildClangArgs(arguments);
     if (!arguments.input_file.IsEmpty())
     {
         Opal::GetLogger().Info("Obsidian", "Compiling file: {}", arguments.input_file.GetData());
-        ProcessTranslationUnit(context, index, arguments.input_file);
+        ProcessTranslationUnit(context, index, arguments.input_file, clang_args);
         context.input_files.PushBack(arguments.input_file);
     }
     else if (!arguments.input_dir.IsEmpty())
@@ -499,7 +501,7 @@ void Run(ObsidianArguments& arguments)
                 continue;
             }
             Opal::GetLogger().Info("Obsidian", "Compiling file: {}", entries[i].path.GetData());
-            ProcessTranslationUnit(context, index, entries[i].path);
+            ProcessTranslationUnit(context, index, entries[i].path, clang_args);
             context.input_files.PushBack(entries[i].path);
         }
     }
