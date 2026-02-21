@@ -2,9 +2,9 @@ name: Build and Test
 
 on:
   push:
-    branches: [ "cpp-impl" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "cpp-impl" ]
+    branches: [ "main" ]
 
 jobs:
   build:
