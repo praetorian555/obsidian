@@ -95,10 +95,18 @@ obsidian input-dir=src/include output-dir=generated \
     compile-options=-Isrc/include,-DMY_DEFINE
 ```
 
+### Check Version
+
+```bash
+obsidian version
+# Obsidian 0.1.0
+```
+
 ### Command-Line Arguments
 
 | Argument | Required | Description |
 |---|---|---|
+| `version` | No | Print version and exit |
 | `input-file=<path>` | Yes* | Path to a single input header file |
 | `input-dir=<path>` | Yes* | Path to a directory of input headers (recursive) |
 | `output-dir=<path>` | Yes | Output directory for generated headers (must exist) |
@@ -146,8 +154,9 @@ Include the generated `reflection.hpp` in your code. It can be safely included f
 using namespace MyGame;
 
 // Enum metadata
-Obs::Enum<CharacterClass>::GetEnumName();          // "CharacterClass"
-Obs::Enum<CharacterClass>::GetFullEnumName();       // "MyGame::CharacterClass"
+Obs::Enum<CharacterClass>::GetName();               // "CharacterClass"
+Obs::Enum<CharacterClass>::GetScope();              // "MyGame"
+Obs::Enum<CharacterClass>::GetScopedName();         // "MyGame::CharacterClass"
 Obs::Enum<CharacterClass>::GetDescription();        // "A character class."
 
 // Value conversions
