@@ -147,3 +147,21 @@ struct MalformedAttrStruct
     OBS_PROP("a=b=c", "simple")
     int32_t y = 0;
 };
+
+/// The "important" enum.
+OBS_ENUM()
+enum class QuotedDescEnum : int32_t
+{
+    /// The "first" value.
+    First,
+    Second,
+};
+
+/// Separator: \ value.
+OBS_CLASS()
+struct BackslashDesc
+{
+    /// Offset: 0x5C \ backslash.
+    OBS_PROP()
+    int32_t value = 0;
+};

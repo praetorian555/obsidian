@@ -175,3 +175,27 @@ add_obsidian_test(
         std=c++99
     EXPECTED_EXIT_CODE 1
 )
+
+# ---- Category 2: Compilation error tests ----
+
+# 2.2 Syntax error in input file
+add_obsidian_test(
+    NAME cpp_test_syntax_error
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/include-error
+    OBSIDIAN_ARGS
+        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include-error/syntax-error.hpp
+        output-dir=${CMAKE_CURRENT_BINARY_DIR}/include-error
+        inc-dirs=${INCLUDE_DIRECTORIES}
+    EXPECTED_EXIT_CODE 1
+)
+
+# 2.3 Missing include
+add_obsidian_test(
+    NAME cpp_test_missing_include
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/include-error
+    OBSIDIAN_ARGS
+        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include-error/missing-include.hpp
+        output-dir=${CMAKE_CURRENT_BINARY_DIR}/include-error
+        inc-dirs=${INCLUDE_DIRECTORIES}
+    EXPECTED_EXIT_CODE 1
+)

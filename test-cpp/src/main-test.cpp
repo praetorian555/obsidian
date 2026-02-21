@@ -835,3 +835,42 @@ TEST_CASE("Malformed attributes", "[refl][attributes][malformed]")
         REQUIRE(strcmp(prop->GetAttributeValue("simple"), "1") == 0);
     }
 }
+
+TEST_CASE("String escaping", "[refl][escaping]")
+{
+    SECTION("Enum with double quotes in description")
+    {
+        REQUIRE(strcmp(Obs::Enum<QuotedDescEnum>::GetEnumName(), "QuotedDescEnum") == 0);
+        REQUIRE(strcmp(Obs::Enum<QuotedDescEnum>::GetDescription(), "The \"important\" enum.") == 0);
+        REQUIRE(strcmp(Obs::Enum<QuotedDescEnum>::GetValueDescription(QuotedDescEnum::First), "The \"first\" value.") == 0);
+        REQUIRE(strcmp(Obs::Enum<QuotedDescEnum>::GetValueDescription(QuotedDescEnum::Second), "") == 0);
+    }
+    SECTION("Class with backslashes in description")
+    {
+        REQUIRE(strcmp(Obs::Class<BackslashDesc>::GetName(), "BackslashDesc") == 0);
+        REQUIRE(strcmp(Obs::Class<BackslashDesc>::GetDescription(), "Separator: \\ value.") == 0);
+
+        auto it = Obs::Class<BackslashDesc>::Get().begin();
+        REQUIRE(strcmp(it->name, "value") == 0);
+        REQUIRE(strcmp(it->description, "Offset: 0x5C \\ backslash.") == 0);
+    }
+    SECTION("QuotedDescEnum in EnumCollection")
+    {
+        const Obs::EnumEntry* entry = nullptr;
+        REQUIRE(Obs::EnumCollection::GetEnum("QuotedDescEnum", entry));
+        REQUIRE(strcmp(entry->description, "The \"important\" enum.") == 0);
+        REQUIRE(entry->items.size() == 2);
+        REQUIRE(strcmp(entry->items[0].description, "The \"first\" value.") == 0);
+    }
+    SECTION("BackslashDesc in ClassCollection")
+    {
+        const Obs::ClassEntry* entry = nullptr;
+        REQUIRE(Obs::ClassCollection::GetClassEntry("BackslashDesc", entry));
+        REQUIRE(strcmp(entry->description, "Separator: \\ value.") == 0);
+        REQUIRE(entry->properties.size() == 1);
+
+        const Obs::Property* prop = nullptr;
+        REQUIRE(Obs::ClassCollection::GetProperty(*entry, "value", prop));
+        REQUIRE(strcmp(prop->description, "Offset: 0x5C \\ backslash.") == 0);
+    }
+}
