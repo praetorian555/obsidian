@@ -388,25 +388,24 @@ void DumpAst(const CppContext& context)
     }
 }
 
-CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXIndex index, Opal::ArrayView<Opal::StringUtf8> args)
+CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXIndex index, ObsidianArguments& program_arguments)
 {
-    Opal::DynamicArray<const char*> args_array(args.GetSize());
-    Opal::StringUtf8 options_str;
-    for (Opal::u32 i = 0; i < args.GetSize(); i++)
+    Opal::DynamicArray<const char*> args_array;
+    args_array.Reserve(program_arguments.compile_options.GetSize() + 1);
+    args_array.PushBack(*program_arguments.standard_version_as_option);
+    for (Opal::u32 i = 0; i < program_arguments.compile_options.GetSize(); i++)
     {
-        args_array[i] = args[i].GetData();
-        if (i > 0)
-        {
-            options_str += " ";
-        }
-        options_str += args[i];
+        args_array.PushBack(*program_arguments.compile_options[i]);
     }
-    Opal::GetLogger().Verbose("Obsidian", "Compile options: {}", options_str.GetData());
-    CXTranslationUnit translation_unit = clang_parseTranslationUnit(index, input_file.GetData(), args_array.GetData(), args_array.GetSize(),
-                                                                    nullptr, 0, CXTranslationUnit_DetailedPreprocessingRecord);
 
-    if (translation_unit == nullptr)
+    CXTranslationUnit translation_unit;
+    CXErrorCode error_code = clang_parseTranslationUnit2(index, input_file.GetData(), args_array.GetData(), args_array.GetSize(), nullptr,
+                                                         0, CXTranslationUnit_DetailedPreprocessingRecord, &translation_unit);
+    if (error_code != CXError_Success)
     {
+        Opal::GetLogger().Error("Obsidian",
+                                "Parsing of the translation unit failed. This is most likely because of invalid input argument, such as "
+                                "invalid compile option.");
         throw TranslationFailedException(input_file);
     }
 
@@ -445,18 +444,20 @@ CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXInd
 
 void ProcessTranslationUnit(CppContext& context, CXIndex index, const Opal::StringUtf8& input_file)
 {
-    auto compile_options = Opal::ArrayView<Opal::StringUtf8>{context.arguments.compile_options};
     if (context.arguments.verbose)
     {
+        auto compile_options = Opal::ArrayView<Opal::StringUtf8>{context.arguments.compile_options};
+
         Opal::StringUtf8 options_str;
+        options_str += context.arguments.standard_version_as_option;
         for (Opal::u32 i = 0; i < compile_options.GetSize(); i++)
         {
             options_str += " ";
             options_str += compile_options[i];
         }
-        Opal::GetLogger().Verbose("Compiling with following options:{}", *options_str);
+        Opal::GetLogger().Verbose("Obsidian", "Compiling with following options:{}", *options_str);
     }
-    CXTranslationUnit translation_unit = ParseTranslationUnit(input_file, index, compile_options);
+    CXTranslationUnit translation_unit = ParseTranslationUnit(input_file, index, context.arguments);
     CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
     clang_visitChildren(cursor, Visitor, &context);
     clang_disposeTranslationUnit(translation_unit);
@@ -510,6 +511,19 @@ void Run(ObsidianArguments& arguments)
     clang_disposeIndex(index);
 }
 
+const Opal::DynamicArray<Opal::StringUtf8> g_supported_standards = {"c++11", "c++14", "c++17", "c++20", "c++23", "c++26", "c++27"};
+bool IsValidStandard(const Opal::StringUtf8& std)
+{
+    for (const auto& standard : g_supported_standards)
+    {
+        if (std == standard)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
 {
     ObsidianArguments arguments;
@@ -519,15 +533,13 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
         .AddArgumentDefinition(arguments.input_file, {"input-file", "Path to a single input header file", true})
         .AddArgumentDefinition(arguments.input_dir, {"input-dir", "Path to a directory with input header files", true})
         .AddArgumentDefinition(arguments.output_dir, {"output-dir", "Path to the output directory for generated headers", true})
-        .AddArgumentDefinition(arguments.should_dump_ast, {"dump-ast", "Dump the extracted AST metadata", true})
-        .AddArgumentDefinition(arguments.use_separate_files, {"separate-files", "Generate separate files for each type", true})
+        .AddArgumentDefinition(
+            arguments.standard_version,
+            {.name = "std", .desc = "Which C++ standard to use", .is_optional = true, .possible_values = g_supported_standards})
         .AddArgumentDefinition(arguments.compile_options, {"compile-options", "Comma-separated list of compile options", true})
-        .AddArgumentDefinition(arguments.verbose, {"verbose", "Enable verbose logging output", true});
-
-    if (!builder.Build(argv, static_cast<Opal::u32>(argc)))
-    {
-        throw ArgumentValidationException("Failed to build program arguments");
-    }
+        .AddArgumentDefinition(arguments.verbose, {"verbose", "Enable verbose logging output", true})
+        .AddArgumentDefinition(arguments.should_dump_ast, {"dump-ast", "Dump the extracted AST metadata", true});
+    builder.Build(argv, static_cast<Opal::u32>(argc));
 
     if (!arguments.input_file.IsEmpty() && !arguments.input_dir.IsEmpty())
     {
@@ -545,6 +557,12 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
     {
         throw ArgumentValidationException("Output directory does not exist");
     }
+    if (arguments.standard_version.GetSize() > 6 || !IsValidStandard(arguments.standard_version))
+    {
+        throw ArgumentValidationException("Invalid standard version");
+    }
+
+    arguments.standard_version_as_option = "-std=" + arguments.standard_version;
 
     return arguments;
 }
@@ -569,15 +587,15 @@ int main(int argc, const char** argv)
         Opal::GetLogger().Info("Obsidian", "{}", *version);
         Run(arguments);
     }
+    catch (const Opal::HelpRequestedException& e)
+    {
+        return 0;
+    }
     catch (const Opal::Exception& e)
     {
         Opal::GetLogger().Error("Obsidian", "{}", *e.What());
         Opal::GetLogger().Flush();
         return 1;
-    }
-    catch (const Opal::HelpRequestedException& e)
-    {
-        return 0;
     }
     return 0;
 }

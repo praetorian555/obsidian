@@ -78,10 +78,13 @@ struct ObsidianArguments
     Opal::StringUtf8 input_file;
     Opal::StringUtf8 input_dir;
     Opal::StringUtf8 output_dir;
+    Opal::StringUtf8 standard_version = "c++20";
     Opal::DynamicArray<Opal::StringUtf8> compile_options;
     bool should_dump_ast = false;
     bool use_separate_files = false;
     bool verbose = false;
+
+    Opal::StringUtf8 standard_version_as_option;
 };
 
 struct CppContext
