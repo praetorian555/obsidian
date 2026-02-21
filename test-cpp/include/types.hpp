@@ -3,20 +3,64 @@
 #include <cstdint>
 #include <string>
 
+#include "obs/obs.hpp"
+
 #if !defined(DONT_CRASH)
 #error This should not happen!
 #endif
 
+/// A global enum.
+OBS_ENUM()
+enum class GlobalColor
+{
+    Red,
+    Green,
+    Blue,
+};
+
+OBS_CLASS()
+struct GlobalPoint
+{
+    OBS_PROP()
+    float x = 0.0f;
+
+    OBS_PROP()
+    float y = 0.0f;
+};
+
+OBS_ENUM()
+enum class EmptyEnum : int32_t
+{
+};
+
+OBS_CLASS()
+struct EmptyStruct
+{
+};
+
 namespace FirstNamespace
 {
 
-// This is a vegetable enum.
-enum class [[obs::refl]] Vegetable : int8_t
+OBS_ENUM()
+enum DayOfWeek
+{
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday,
+};
+
+/// This is a vegetable enum.
+OBS_ENUM("flags")
+enum class Vegetable : int8_t
 {
     /** This is carrot. */
     Carrot = -10,
     Potato,
-    // This is cucumber.
+    /// This is cucumber.
     Cucumber,
 };
 
@@ -25,7 +69,8 @@ namespace SecondNamespace
 /**
  * This is a fruit enum.
  */
-enum class [[obs::refl]] Fruit
+OBS_ENUM()
+enum class Fruit
 {
     Apple = 5,
     /** This is orange. */
@@ -37,30 +82,86 @@ using namespace std;
 /**
  * This is a test struct.
  */
-struct [[obs::refl]] DataStruct
+OBS_CLASS("serializable=1")
+struct DataStruct
 {
-    enum class [[obs::refl]] DataType : int16_t
+    OBS_ENUM()
+    enum class DataType : int16_t
     {
         A,
         B,
         C
     };
 
-    [[obs::refl]]
+    /// The first value.
+    OBS_PROP("min=0", "max=100")
     int32_t a = 1;
 
-    [[obs::refl]]
+    /** The second value. */
+    OBS_PROP()
     float b = 5.0f;
 
-    [[obs::refl]]
+    OBS_PROP()
     const char * c = "this is test";
 
-    [[obs::refl]]
+    OBS_PROP()
     DataType d = DataType::A;
 
-    [[obs::refl]]
+    OBS_PROP()
     string e = "this is test";
+};
+
+/// A player entity.
+OBS_CLASS("entity")
+class Player
+{
+public:
+    /// Player name.
+    OBS_PROP()
+    string name = "unnamed";
+
+    OBS_PROP()
+    int32_t health = 100;
+
+    OBS_PROP()
+    float speed = 5.0f;
 };
 
 } // SecondNamespace
 } // FirstNamespace
+
+// Types with malformed/edge-case attributes for testing attribute parsing robustness.
+
+OBS_ENUM("", "multi=a=b", "standalone")
+enum class MalformedAttrEnum : int32_t
+{
+    Value1,
+};
+
+OBS_CLASS("=", "valid=yes")
+struct MalformedAttrStruct
+{
+    OBS_PROP("")
+    int32_t x = 0;
+
+    OBS_PROP("a=b=c", "simple")
+    int32_t y = 0;
+};
+
+/// The "important" enum.
+OBS_ENUM()
+enum class QuotedDescEnum : int32_t
+{
+    /// The "first" value.
+    First,
+    Second,
+};
+
+/// Separator: \ value.
+OBS_CLASS()
+struct BackslashDesc
+{
+    /// Offset: 0x5C \ backslash.
+    OBS_PROP()
+    int32_t value = 0;
+};

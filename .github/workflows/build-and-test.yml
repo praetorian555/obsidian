@@ -1,72 +1,38 @@
-# .github/workflows/dotnet-build.yml
-name: Build Obsidian Console App
+name: Build and Test
 
 on:
-  # Trigger on every push or pull-request to the default branch
   push:
-    branches: [ "main" ]
+    branches: [ "cpp-impl" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "cpp-impl" ]
 
 jobs:
   build:
-    name: ${{matrix.config.name}}
-    runs-on: ${{matrix.config.os}}
+    name: "Windows MSVC ${{ matrix.configuration }}"
+    runs-on: windows-latest
     strategy:
+      fail-fast: false
       matrix:
-        config:
-          - name: "Windows MSVC Debug"
-            os: windows-latest
-            configuration: Debug
-            cxx: "cl"
-            generators: "Visual Studio 17 2022"
-            config-folder: Debug
-          - name: "Windows MSVC Release"
-            os: windows-latest
-            configuration: Release
-            cxx: "cl"
-            generators: "Visual Studio 17 2022"
-            config-folder: Release
-          - name: "Linux GCC Debug"
-            os: ubuntu-latest
-            configuration: Debug
-            cxx: "g++"
-            generators: "Unix Makefiles"
-            config-folder: ""
-          - name: "Linux GCC Release"
-            os: ubuntu-latest
-            configuration: Release
-            cxx: "g++"
-            generators: "Unix Makefiles"
-            config-folder: ""
-          - name: "Linux Clang Debug"
-            os: ubuntu-latest
-            configuration: Debug
-            cxx: "clang++"
-            generators: "Unix Makefiles"
-            config-folder: ""
-          - name: "Linux Clang Release"
-            os: ubuntu-latest
-            configuration: Release
-            cxx: "clang++"
-            generators: "Unix Makefiles"
-            config-folder: ""
+        configuration: [Debug, RelWithDebInfo, Release]
+        hardening: [OFF]
 
     steps:
-    - name: ⬇️  Checkout source
+    - name: Checkout source
       uses: actions/checkout@v4
 
-    - name: 🛠️  Setup .NET SDK
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'     # Pin to the major version you target
+    - name: Install LLVM
+      run: choco install llvm --yes --no-progress
 
-    - name: 📦  Generate build files
-      run: cmake -B ${{github.workspace}}/cpp-build -G "${{matrix.config.generators}}" -DCMAKE_BUILD_TYPE=${{matrix.config.configuration}}
+    - name: Configure CMake
+      run: >
+        cmake -B ${{ github.workspace }}/build
+        -G "Visual Studio 17 2022"
+        -DOBS_LLVM_PATH="C:/Program Files/LLVM"
+        -DOBS_BUILD_TESTS=ON
+        -DOBS_HARDENING=${{ matrix.hardening }}
 
-    - name: 🔨  Build – ${{ matrix.config.configuration }}
-      run: cmake --build ${{github.workspace}}/cpp-build --config ${{matrix.config.configuration}}
+    - name: Build
+      run: cmake --build ${{ github.workspace }}/build --config ${{ matrix.configuration }}
 
-    - name: Run Test
-      working-directory: ${{github.workspace}}/cpp-build/${{matrix.config.config-folder}}
-      run: ./test-cpp-project
+    - name: Run tests
+      run: ctest --test-dir ${{ github.workspace }}/build -C ${{ matrix.configuration }} --output-on-failure
