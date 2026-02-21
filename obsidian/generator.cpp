@@ -333,12 +333,4 @@ void Generate(const CppContext& context)
             throw FileWriteException(output_path);
         }
     }
-
-    // Write obs.h
-    Opal::StringUtf8 obs_path = context.arguments.output_dir + "/obs.h";
-    Opal::GetLogger().Info("Obsidian", "Writing obs.h: {}", obs_path.GetData());
-    if (!WriteToFile(obs_path, Opal::StringUtf8(ObsTemplates::k_obs_header)))
-    {
-        throw FileWriteException(obs_path);
-    }
 }
