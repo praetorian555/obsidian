@@ -391,11 +391,15 @@ void DumpAst(const CppContext& context)
 CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXIndex index, ObsidianArguments& program_arguments)
 {
     Opal::DynamicArray<const char*> args_array;
-    args_array.Reserve(program_arguments.compile_options.GetSize() + 1);
+    args_array.Reserve(program_arguments.compile_options.GetSize() + program_arguments.include_directories.GetSize() + 1);
     args_array.PushBack(*program_arguments.standard_version_as_option);
-    for (Opal::u32 i = 0; i < program_arguments.compile_options.GetSize(); i++)
+    for (const auto& option : program_arguments.compile_options)
     {
-        args_array.PushBack(*program_arguments.compile_options[i]);
+        args_array.PushBack(*option);
+    }
+    for (const auto& dir : program_arguments.include_directories_as_option)
+    {
+        args_array.PushBack(*dir);
     }
 
     CXTranslationUnit translation_unit;
@@ -455,7 +459,12 @@ void ProcessTranslationUnit(CppContext& context, CXIndex index, const Opal::Stri
             options_str += " ";
             options_str += compile_options[i];
         }
-        Opal::GetLogger().Verbose("Obsidian", "Compiling with following options:{}", *options_str);
+        for (const auto& dir : context.arguments.include_directories_as_option)
+        {
+            options_str += " ";
+            options_str += dir;
+        }
+        Opal::GetLogger().Verbose("Obsidian", "Compiling with following options: {}", *options_str);
     }
     CXTranslationUnit translation_unit = ParseTranslationUnit(input_file, index, context.arguments);
     CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
@@ -537,6 +546,8 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
             arguments.standard_version,
             {.name = "std", .desc = "Which C++ standard to use", .is_optional = true, .possible_values = g_supported_standards})
         .AddArgumentDefinition(arguments.compile_options, {"compile-options", "Comma-separated list of compile options", true})
+        .AddArgumentDefinition(arguments.include_directories,
+                               {.name = "inc-dirs", .desc = "Comma-separated list of include directories", .is_optional = true})
         .AddArgumentDefinition(arguments.verbose, {"verbose", "Enable verbose logging output", true})
         .AddArgumentDefinition(arguments.should_dump_ast, {"dump-ast", "Dump the extracted AST metadata", true});
     builder.Build(argv, static_cast<Opal::u32>(argc));
@@ -560,6 +571,14 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
     if (arguments.standard_version.GetSize() > 6 || !IsValidStandard(arguments.standard_version))
     {
         throw ArgumentValidationException("Invalid standard version");
+    }
+    for (const auto& dir : arguments.include_directories)
+    {
+        if (!Opal::Exists(dir))
+        {
+            throw ArgumentValidationException("Include directory does not exist");
+        }
+        arguments.include_directories_as_option.PushBack("-I" + dir);
     }
 
     arguments.standard_version_as_option = "-std=" + arguments.standard_version;

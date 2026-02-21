@@ -45,7 +45,8 @@ add_custom_target(
         COMMAND $<TARGET_FILE:obsidian>
             input-dir=${CMAKE_CURRENT_SOURCE_DIR}/include
             output-dir=${CMAKE_CURRENT_BINARY_DIR}/include-dir
-            compile-options=-DDONT_CRASH,-I${CMAKE_CURRENT_SOURCE_DIR}/include,-I${CMAKE_SOURCE_DIR}/include
+            compile-options=-DDONT_CRASH,-Wall,-Wextra
+            inc-dirs=${CMAKE_CURRENT_SOURCE_DIR}/include,${CMAKE_SOURCE_DIR}/include
         DEPENDS obsidian
         COMMENT "Generating reflection headers using input-dir..."
         VERBATIM
