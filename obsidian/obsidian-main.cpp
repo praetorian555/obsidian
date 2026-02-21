@@ -511,11 +511,8 @@ void Run(ObsidianArguments& arguments)
         DumpAst(context);
     }
 
-    if (!context.arguments.output_dir.IsEmpty())
-    {
-        Opal::GetLogger().Info("Obsidian", "Generating reflection data...");
-        Generate(context);
-    }
+    Opal::GetLogger().Info("Obsidian", "Generating reflection data...");
+    Generate(context);
 
     clang_disposeIndex(index);
 }
@@ -564,7 +561,11 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
     {
         throw ArgumentValidationException("Input directory does not exist");
     }
-    if (!arguments.output_dir.IsEmpty() && !Opal::Exists(arguments.output_dir))
+    if (arguments.output_dir.IsEmpty())
+    {
+        throw ArgumentValidationException("Output directory not specified");
+    }
+    if (!Opal::Exists(arguments.output_dir))
     {
         throw ArgumentValidationException("Output directory does not exist");
     }
