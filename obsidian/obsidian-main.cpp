@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstring>
 
 #include "opal/file-system.h"
 #include "opal/logging.h"
@@ -602,6 +603,15 @@ int main(int argc, const char** argv)
     logger.RegisterCategory("Obsidian", Opal::LogLevel::Info);
     Opal::SetLogger(&logger);
 
+    for (int i = 1; i < argc; i++)
+    {
+        if (strcmp(argv[i], "version") == 0)
+        {
+            printf("Obsidian %d.%d.%d\n", OBS_VERSION_MAJOR, OBS_VERSION_MINOR, OBS_VERSION_PATCH);
+            return 0;
+        }
+    }
+
     try
     {
         ObsidianArguments arguments = ParseAndValidateArguments(argc, argv);
@@ -609,6 +619,7 @@ int main(int argc, const char** argv)
         {
             logger.SetCategoryLevel("Obsidian", Opal::LogLevel::Verbose);
         }
+        Opal::GetLogger().Info("Obsidian", "Obsidian {}.{}.{}", OBS_VERSION_MAJOR, OBS_VERSION_MINOR, OBS_VERSION_PATCH);
         auto version = ToString(clang_getClangVersion());
         Opal::GetLogger().Info("Obsidian", "{}", *version);
         Run(arguments);

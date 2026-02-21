@@ -204,6 +204,12 @@ add_obsidian_test(
     EXPECTED_EXIT_CODE 1
 )
 
+# ---- Version test ----
+
+add_test(NAME cpp_test_version
+    COMMAND $<TARGET_FILE:obsidian> version
+)
+
 # 2.3 Missing include
 add_obsidian_test(
     NAME cpp_test_missing_include

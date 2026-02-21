@@ -70,6 +70,11 @@ add_executable(obsidian
     obsidian/generator.cpp
 )
 target_compile_features(obsidian PRIVATE cxx_std_20)
+target_compile_definitions(obsidian PRIVATE
+    OBS_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+    OBS_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+    OBS_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+)
 target_link_libraries(obsidian PRIVATE ${OBS_LLVM_PATH}/lib/libclang.lib opal)
 target_include_directories(obsidian PRIVATE ${OBS_LLVM_PATH}/include)
 target_include_directories(obsidian PUBLIC include)
