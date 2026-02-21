@@ -576,5 +576,9 @@ int main(int argc, const char** argv)
         Opal::GetLogger().Flush();
         return 1;
     }
+    catch (const Opal::HelpRequestedException& e)
+    {
+        return 0;
+    }
     return 0;
 }
