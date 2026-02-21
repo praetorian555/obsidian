@@ -19,8 +19,19 @@ setup_compiler_options(options)
 include(../cmake/sanitizers.cmake)
 setup_sanitizers(options)
 
+# Dummy run to make sure reflection.hpp exists when compiling the test-cpp-project
+add_custom_target(
+        generate_dummy_reflection
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/include
+        COMMAND $<TARGET_FILE:obsidian>
+        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+        output-dir=${CMAKE_CURRENT_BINARY_DIR}/include
+        compile-options=-DDONT_CRASH,-I${CMAKE_CURRENT_SOURCE_DIR}/include,-I${CMAKE_SOURCE_DIR}/include
+        DEPENDS obsidian
+)
+
 add_executable(test-cpp-project src/main-test.cpp src/secondary-test.cpp include/types.hpp third-party/catch2/src/catch_amalgamated.cpp)
-add_dependencies(test-cpp-project warnings options)
+add_dependencies(test-cpp-project warnings options generate_dummy_reflection)
 target_compile_features(test-cpp-project PRIVATE cxx_std_20)
 target_compile_definitions(test-cpp-project PRIVATE CATCH_AMALGAMATED_CUSTOM_MAIN DONT_CRASH)
 target_include_directories(test-cpp-project PRIVATE include ${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_SOURCE_DIR}/include)
