@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(OBSIDIAN VERSION 0.1.0 LANGUAGES CXX)
+project(OBSIDIAN VERSION 0.2.0 LANGUAGES CXX)
 
 option(OBS_LLVM_PATH "Root path where LLVM binaries and libraries are installed" "")
 message(STATUS "OBS_LLVM_PATH: ${OBS_LLVM_PATH}")
