@@ -112,6 +112,7 @@ static Opal::StringUtf8 GenerateEnumSpecialization(const CppEnum& cpp_enum)
 
     result = ReplaceAll(result, "__enum_full_name__", EscapeCppStringLiteral(cpp_enum.full_name));
     result = ReplaceAll(result, "__enum_name__", EscapeCppStringLiteral(cpp_enum.name));
+    result = ReplaceAll(result, "__enum_scope__", EscapeCppStringLiteral(cpp_enum.scope));
     result = ReplaceAll(result, "__enum_comment__", EscapeCppStringLiteral(cpp_enum.description));
 
     // Last entry

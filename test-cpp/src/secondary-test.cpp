@@ -10,6 +10,6 @@ using namespace FirstNamespace::SecondNamespace;
 
 TEST_CASE("Multi-TU inclusion", "[refl]")
 {
-    REQUIRE(strcmp(Obs::Enum<Fruit>::GetEnumName(), "Fruit") == 0);
+    REQUIRE(strcmp(Obs::Enum<Fruit>::GetName(), "Fruit") == 0);
     REQUIRE(strcmp(Obs::Class<DataStruct>::GetName(), "DataStruct") == 0);
 }

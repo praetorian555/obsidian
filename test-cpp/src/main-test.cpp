@@ -24,8 +24,8 @@ TEST_CASE("Enum reflection", "[refl][enum]")
     SECTION("DayOfWeek")
     {
         using DayOfWeekEnum = FirstNamespace::DayOfWeek;
-        REQUIRE(strcmp(Obs::Enum<DayOfWeekEnum>::GetEnumName(), "DayOfWeek") == 0);
-        REQUIRE(strcmp(Obs::Enum<DayOfWeekEnum>::GetFullEnumName(), "FirstNamespace::DayOfWeek") == 0);
+        REQUIRE(strcmp(Obs::Enum<DayOfWeekEnum>::GetName(), "DayOfWeek") == 0);
+        REQUIRE(strcmp(Obs::Enum<DayOfWeekEnum>::GetScopedName(), "FirstNamespace::DayOfWeek") == 0);
         REQUIRE(strcmp(Obs::Enum<DayOfWeekEnum>::GetDescription(), "") == 0);
 
         REQUIRE(Obs::Enum<DayOfWeekEnum>::GetUnderlyingValue(Obs::Enum<DayOfWeekEnum>::k_end) == 7);
@@ -42,8 +42,8 @@ TEST_CASE("Enum reflection", "[refl][enum]")
     SECTION("Vegetable")
     {
         using VegEnum = FirstNamespace::Vegetable;
-        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetEnumName(), "Vegetable") == 0);
-        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetFullEnumName(), "FirstNamespace::Vegetable") == 0);
+        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetName(), "Vegetable") == 0);
+        REQUIRE(strcmp(Obs::Enum<VegEnum>::GetScopedName(), "FirstNamespace::Vegetable") == 0);
         REQUIRE(strcmp(Obs::Enum<VegEnum>::GetDescription(), "This is a vegetable enum.") == 0);
 
         REQUIRE(Obs::Enum<VegEnum>::GetUnderlyingValue(Obs::Enum<VegEnum>::k_end) == -7);
@@ -70,8 +70,8 @@ TEST_CASE("Enum reflection", "[refl][enum]")
     }
     SECTION("Fruit")
     {
-        REQUIRE(strcmp(Obs::Enum<Fruit>::GetEnumName(), "Fruit") == 0);
-        REQUIRE(strcmp(Obs::Enum<Fruit>::GetFullEnumName(), "FirstNamespace::SecondNamespace::Fruit") == 0);
+        REQUIRE(strcmp(Obs::Enum<Fruit>::GetName(), "Fruit") == 0);
+        REQUIRE(strcmp(Obs::Enum<Fruit>::GetScopedName(), "FirstNamespace::SecondNamespace::Fruit") == 0);
         REQUIRE(strcmp(Obs::Enum<Fruit>::GetDescription(), "This is a fruit enum.") == 0);
 
         REQUIRE(Obs::Enum<Fruit>::GetUnderlyingValue(Obs::Enum<Fruit>::k_end) == 8);
@@ -99,8 +99,8 @@ TEST_CASE("Enum reflection", "[refl][enum]")
     SECTION("DataType")
     {
         using DataTypeEnum = DataStruct::DataType;
-        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetEnumName(), "DataType") == 0);
-        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetFullEnumName(), "FirstNamespace::SecondNamespace::DataStruct::DataType") == 0);
+        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetName(), "DataType") == 0);
+        REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetScopedName(), "FirstNamespace::SecondNamespace::DataStruct::DataType") == 0);
         REQUIRE(strcmp(Obs::Enum<DataTypeEnum>::GetDescription(), "") == 0);
 
         REQUIRE(Obs::Enum<DataTypeEnum>::GetUnderlyingValue(Obs::Enum<DataTypeEnum>::k_end) == 3);
@@ -667,8 +667,8 @@ TEST_CASE("Global namespace types", "[refl][global]")
 {
     SECTION("GlobalColor enum")
     {
-        REQUIRE(strcmp(Obs::Enum<GlobalColor>::GetEnumName(), "GlobalColor") == 0);
-        REQUIRE(strcmp(Obs::Enum<GlobalColor>::GetFullEnumName(), "::GlobalColor") == 0);
+        REQUIRE(strcmp(Obs::Enum<GlobalColor>::GetName(), "GlobalColor") == 0);
+        REQUIRE(strcmp(Obs::Enum<GlobalColor>::GetScopedName(), "::GlobalColor") == 0);
         REQUIRE(strcmp(Obs::Enum<GlobalColor>::GetDescription(), "A global enum.") == 0);
 
         REQUIRE(strcmp(Obs::Enum<GlobalColor>::GetValueName(GlobalColor::Red), "Red") == 0);
@@ -734,8 +734,8 @@ TEST_CASE("Empty types", "[refl][empty]")
 {
     SECTION("EmptyEnum compile-time")
     {
-        REQUIRE(strcmp(Obs::Enum<EmptyEnum>::GetEnumName(), "EmptyEnum") == 0);
-        REQUIRE(strcmp(Obs::Enum<EmptyEnum>::GetFullEnumName(), "::EmptyEnum") == 0);
+        REQUIRE(strcmp(Obs::Enum<EmptyEnum>::GetName(), "EmptyEnum") == 0);
+        REQUIRE(strcmp(Obs::Enum<EmptyEnum>::GetScopedName(), "::EmptyEnum") == 0);
         REQUIRE(Obs::Enum<EmptyEnum>::GetAttributes().empty());
     }
     SECTION("EmptyEnum in collection")
@@ -840,7 +840,7 @@ TEST_CASE("String escaping", "[refl][escaping]")
 {
     SECTION("Enum with double quotes in description")
     {
-        REQUIRE(strcmp(Obs::Enum<QuotedDescEnum>::GetEnumName(), "QuotedDescEnum") == 0);
+        REQUIRE(strcmp(Obs::Enum<QuotedDescEnum>::GetName(), "QuotedDescEnum") == 0);
         REQUIRE(strcmp(Obs::Enum<QuotedDescEnum>::GetDescription(), "The \"important\" enum.") == 0);
         REQUIRE(strcmp(Obs::Enum<QuotedDescEnum>::GetValueDescription(QuotedDescEnum::First), "The \"first\" value.") == 0);
         REQUIRE(strcmp(Obs::Enum<QuotedDescEnum>::GetValueDescription(QuotedDescEnum::Second), "") == 0);

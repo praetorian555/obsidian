@@ -142,8 +142,9 @@ struct Enum<__enum_full_name__>
     using EnumType = __enum_full_name__;
     static constexpr EnumType k_end = static_cast<EnumType>(static_cast<UnderlyingType>(__enum_last_entry__) + 1);
 
-    static const char* GetFullEnumName() { return "__enum_full_name__"; }
-    static const char* GetEnumName() { return "__enum_name__"; }
+    static const char* GetName() { return "__enum_name__"; }
+    static const char* GetScope() { return "__enum_scope__"; }
+    static const char* GetScopedName() { return "__enum_full_name__"; }
     static const char* GetDescription() { return "__enum_comment__"; }
 
     static const char* GetValueDescription(EnumType enum_value)
