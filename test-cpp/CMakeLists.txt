@@ -19,53 +19,75 @@ setup_compiler_options(options)
 include(../cmake/sanitizers.cmake)
 setup_sanitizers(options)
 
-add_custom_target(
-        generate_reflection
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/include
-        COMMAND $<TARGET_FILE:obsidian>
-            input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
-            output-dir=${CMAKE_CURRENT_BINARY_DIR}/include
-            compile-options=-DDONT_CRASH,-I${CMAKE_CURRENT_SOURCE_DIR}/include,-I${CMAKE_SOURCE_DIR}/include
-        DEPENDS obsidian
-        COMMENT "Generating reflection headers..."
-        VERBATIM
-)
-
 add_executable(test-cpp-project src/main-test.cpp src/secondary-test.cpp include/types.hpp third-party/catch2/src/catch_amalgamated.cpp)
-add_dependencies(test-cpp-project warnings options generate_reflection)
+add_dependencies(test-cpp-project warnings options)
 target_compile_features(test-cpp-project PRIVATE cxx_std_20)
 target_compile_definitions(test-cpp-project PRIVATE CATCH_AMALGAMATED_CUSTOM_MAIN DONT_CRASH)
 target_include_directories(test-cpp-project PRIVATE include ${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_SOURCE_DIR}/include)
 target_include_directories(test-cpp-project PRIVATE third-party/catch2/include)
 target_include_directories(test-cpp-project PRIVATE third-party/catch2/include/catch2)
 
-add_custom_target(
-        generate_reflection_dir
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/include-dir
-        COMMAND $<TARGET_FILE:obsidian>
-            input-dir=${CMAKE_CURRENT_SOURCE_DIR}/include
-            output-dir=${CMAKE_CURRENT_BINARY_DIR}/include-dir
-            compile-options=-DDONT_CRASH,-Wall,-Wextra
-            inc-dirs=${CMAKE_CURRENT_SOURCE_DIR}/include,${CMAKE_SOURCE_DIR}/include
-        DEPENDS obsidian
-        COMMENT "Generating reflection headers using input-dir..."
-        VERBATIM
+function(get_include_directories OUT_GENERATOR TARGET)
+    set(${OUT_GENERATOR} $<JOIN:$<TARGET_PROPERTY:${TARGET},INCLUDE_DIRECTORIES>,,> PARENT_SCOPE)
+endfunction()
+
+function(get_definitions OUT_GENERATOR TARGET)
+    set(${OUT_GENERATOR} $<JOIN:$<LIST:TRANSFORM,$<TARGET_PROPERTY:${TARGET},COMPILE_DEFINITIONS>,PREPEND,-D>,,> PARENT_SCOPE)
+endfunction()
+
+function(add_obsidian_test)
+    cmake_parse_arguments(ARG "" "NAME;OUTPUT_DIR;EXPECTED_EXIT_CODE" "OBSIDIAN_ARGS" ${ARGN})
+
+    # Join the list into a single space-separated string.
+    list(JOIN ARG_OBSIDIAN_ARGS " " OBSIDIAN_ARGS_STR)
+
+    set(EXTRA_ARGS "")
+    if (DEFINED ARG_EXPECTED_EXIT_CODE)
+        set(EXTRA_ARGS -DEXPECTED_EXIT_CODE=${ARG_EXPECTED_EXIT_CODE})
+    else ()
+        set(EXTRA_ARGS -DTEST_EXE=$<TARGET_FILE:test-cpp-project>)
+    endif ()
+
+    add_test(NAME ${ARG_NAME}
+        COMMAND ${CMAKE_COMMAND}
+            -DOBSIDIAN_EXE=$<TARGET_FILE:obsidian>
+            -DOUTPUT_DIR=${ARG_OUTPUT_DIR}
+            "-DOBSIDIAN_ARGS=${OBSIDIAN_ARGS_STR}"
+            ${EXTRA_ARGS}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/run-obsidian-test.cmake
+    )
+endfunction()
+
+get_include_directories(INCLUDE_DIRECTORIES test-cpp-project)
+get_definitions(DEFINITIONS test-cpp-project)
+
+add_obsidian_test(
+    NAME cpp_test
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/include
+    OBSIDIAN_ARGS
+        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+        output-dir=${CMAKE_CURRENT_BINARY_DIR}/include
+        std=c++20
+        compile-options=${DEFINITIONS},-Wall
+        inc-dirs=${INCLUDE_DIRECTORIES}
 )
 
-add_executable(test-cpp-project-dir src/main-test.cpp src/secondary-test.cpp include/types.hpp third-party/catch2/src/catch_amalgamated.cpp)
-add_dependencies(test-cpp-project-dir warnings options generate_reflection_dir)
-target_compile_features(test-cpp-project-dir PRIVATE cxx_std_20)
-target_compile_definitions(test-cpp-project-dir PRIVATE CATCH_AMALGAMATED_CUSTOM_MAIN DONT_CRASH)
-target_include_directories(test-cpp-project-dir PRIVATE include ${CMAKE_CURRENT_BINARY_DIR}/include-dir ${CMAKE_SOURCE_DIR}/include)
-target_include_directories(test-cpp-project-dir PRIVATE third-party/catch2/include)
-target_include_directories(test-cpp-project-dir PRIVATE third-party/catch2/include/catch2)
+add_obsidian_test(
+    NAME cpp_test_dir
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/include-dir
+    OBSIDIAN_ARGS
+        input-dir=${CMAKE_CURRENT_SOURCE_DIR}/include
+        output-dir=${CMAKE_CURRENT_BINARY_DIR}/include-dir
+        compile-options=${DEFINITIONS},-Wall
+        inc-dirs=${INCLUDE_DIRECTORIES}
+)
 
-enable_testing()
-add_test(NAME cpp_test COMMAND test-cpp-project)
-add_test(NAME cpp_test_dir COMMAND test-cpp-project-dir)
-add_test(NAME cpp_test_compile_error
-    COMMAND $<TARGET_FILE:obsidian>
+add_obsidian_test(
+    NAME cpp_test_compile_error
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/include-error
+    OBSIDIAN_ARGS
         input-file=${CMAKE_CURRENT_SOURCE_DIR}/include-error/error-types.hpp
-        compile-options=-I${CMAKE_CURRENT_SOURCE_DIR}/include,-I${CMAKE_SOURCE_DIR}/include
+        compile-options=-Wall
+        inc-dirs=${INCLUDE_DIRECTORIES}
+    EXPECTED_EXIT_CODE 1
 )
-set_tests_properties(cpp_test_compile_error PROPERTIES WILL_FAIL TRUE)

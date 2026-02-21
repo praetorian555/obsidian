@@ -82,5 +82,6 @@ add_custom_command(TARGET obsidian PRE_BUILD
 )
 
 if (OBS_BUILD_TESTS)
+    enable_testing()
     add_subdirectory(test-cpp)
 endif ()
