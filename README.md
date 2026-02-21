@@ -97,16 +97,18 @@ obsidian input-dir=src/include output-dir=generated \
 
 ### Command-Line Arguments
 
-| Argument | Description |
-|---|---|
-| `input-file=<path>` | Path to a single input header file |
-| `input-dir=<path>` | Path to a directory of input headers (recursive) |
-| `output-dir=<path>` | Output directory for generated headers |
-| `compile-options=<opts>` | Comma-separated Clang compile options |
-| `dump-ast=true` | Print extracted metadata to stdout |
-| `separate-files=true` | Generate separate files per type *(not yet implemented)* |
+| Argument | Required | Description |
+|---|---|---|
+| `input-file=<path>` | Yes* | Path to a single input header file |
+| `input-dir=<path>` | Yes* | Path to a directory of input headers (recursive) |
+| `output-dir=<path>` | Yes | Output directory for generated headers (must exist) |
+| `std=<version>` | No | C++ standard version (default: `c++20`). Supported: `c++11`, `c++14`, `c++17`, `c++20`, `c++23`, `c++26`, `c++27` |
+| `compile-options=<opts>` | No | Comma-separated Clang compile options |
+| `inc-dirs=<dirs>` | No | Comma-separated list of include directories (automatically prefixed with `-I`) |
+| `verbose=true` | No | Enable verbose logging output |
+| `dump-ast=true` | No | Print extracted AST metadata to stdout |
 
-You must specify either `input-file` or `input-dir`, not both.
+\*You must specify exactly one of `input-file` or `input-dir`.
 
 ### 3. Integrate into CMake
 
@@ -278,7 +280,6 @@ cmake/
 ### Features
 
 - **Separate-files output mode** — The `separate-files` flag is parsed but the code path is not implemented. When enabled, each enum/class should get its own generated header, plus dedicated headers for `EnumCollection` and `ClassCollection`.
-- **Simplified compile arguments** — Add dedicated CLI options for common Clang settings: `std` (C++ standard version, e.g. `std=c++20`), `error-level` (Clang warning level), and `include-paths` (comma-separated include directories, automatically prefixed with `-I`). The existing `compile-options` would remain for passing additional arbitrary flags.
 
 ## AI Disclosure
 
