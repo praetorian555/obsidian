@@ -560,14 +560,13 @@ int main(int argc, const char** argv)
 
     try
     {
-        auto version =  ToString(clang_getClangVersion());
-        Opal::GetLogger().Info("Obsidian", "{}", *version);
-
         ObsidianArguments arguments = ParseAndValidateArguments(argc, argv);
         if (arguments.verbose)
         {
             logger.SetCategoryLevel("Obsidian", Opal::LogLevel::Verbose);
         }
+        auto version = ToString(clang_getClangVersion());
+        Opal::GetLogger().Info("Obsidian", "{}", *version);
         Run(arguments);
     }
     catch (const Opal::Exception& e)
