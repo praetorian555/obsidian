@@ -178,6 +178,21 @@ add_obsidian_test(
 
 # ---- Category 2: Compilation error tests ----
 
+# ---- Install test ----
+
+add_test(NAME cpp_test_install
+    COMMAND ${CMAKE_COMMAND}
+        -DBUILD_DIR=${CMAKE_BINARY_DIR}
+        -DCONFIG=$<CONFIG>
+        -DINPUT_DIR=${CMAKE_CURRENT_SOURCE_DIR}/include
+        -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/install-test
+        "-DINC_DIRS=${INCLUDE_DIRECTORIES}"
+        "-DCOMPILE_OPTIONS=${DEFINITIONS}"
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/run-install-test.cmake
+)
+
+# ---- Category 2: Compilation error tests ----
+
 # 2.2 Syntax error in input file
 add_obsidian_test(
     NAME cpp_test_syntax_error

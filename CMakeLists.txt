@@ -58,6 +58,7 @@ FetchContent_Declare(
         opal
         GIT_REPOSITORY https://github.com/praetorian555/opal
         GIT_TAG main
+        EXCLUDE_FROM_ALL
 )
 FetchContent_MakeAvailable(opal)
 
@@ -85,3 +86,10 @@ if (OBS_BUILD_TESTS)
     enable_testing()
     add_subdirectory(test-cpp)
 endif ()
+
+# Install
+install(TARGETS obsidian RUNTIME DESTINATION .)
+install(FILES ${OBS_LLVM_PATH}/bin/libclang.dll DESTINATION .)
+install(FILES include/obs/obs.hpp DESTINATION include/obs)
+install(FILES LICENSE DESTINATION .)
+install(FILES LLVM-LICENSE DESTINATION .)
