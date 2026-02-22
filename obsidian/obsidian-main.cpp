@@ -473,6 +473,11 @@ void ProcessTranslationUnit(CppContext& context, CXIndex index, const Opal::Stri
     clang_disposeTranslationUnit(translation_unit);
 }
 
+bool IsValidExtension(const Opal::StringUtf8& extension)
+{
+    return extension == ".h" || extension == ".hpp" || extension == ".c" || extension == ".cpp";
+}
+
 void Run(ObsidianArguments& arguments)
 {
     CXIndex index = clang_createIndex(0, 0);
@@ -497,7 +502,7 @@ void Run(ObsidianArguments& arguments)
             {
                 continue;
             }
-            if (ext.GetValue() != ".h" && ext.GetValue() != ".hpp")
+            if (!IsValidExtension(ext.GetValue()))
             {
                 continue;
             }
