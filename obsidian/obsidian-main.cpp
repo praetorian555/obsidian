@@ -536,7 +536,7 @@ bool IsValidStandard(const Opal::StringUtf8& std, const Opal::ArrayView<const Op
 
 ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
 {
-    const Opal::DynamicArray<Opal::StringUtf8> supported_standards = {"c++11", "c++14", "c++17", "c++20", "c++23", "c++26", "c++27"};
+    const Opal::DynamicArray<Opal::StringUtf8> supported_standards = {"c++11", "c++14", "c++17", "c++20", "c++23", "c++26"};
 
     ObsidianArguments arguments;
     Opal::ProgramArgumentsBuilder builder;

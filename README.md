@@ -129,7 +129,7 @@ obsidian version
 | `input-file=<path>` | Yes* | Path to a single input header file |
 | `input-dir=<path>` | Yes* | Path to a directory of input headers (recursive) |
 | `output-dir=<path>` | Yes | Output directory for generated headers (must exist) |
-| `std=<version>` | No | C++ standard version (default: `c++20`). Supported: `c++11`, `c++14`, `c++17`, `c++20`, `c++23`, `c++26`, `c++27` |
+| `std=<version>` | No | C++ standard version (default: `c++20`). Supported: `c++11`, `c++14`, `c++17`, `c++20`, `c++23`, `c++26` |
 | `compile-options=<opts>` | No | Comma-separated Clang compile options |
 | `inc-dirs=<dirs>` | No | Comma-separated list of include directories (automatically prefixed with `-I`) |
 | `verbose=true` | No | Enable verbose logging output |
