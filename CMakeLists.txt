@@ -18,15 +18,15 @@ endif ()
 
 if (NOT EXISTS "${OBS_LLVM_PATH}/bin")
     message(FATAL_ERROR "LLVM binary path does not exist!")
-endif()
+endif ()
 
 if (NOT EXISTS "${OBS_LLVM_PATH}/lib")
     message(FATAL_ERROR "LLVM library path does not exist!")
-endif()
+endif ()
 
 if (NOT EXISTS "${OBS_LLVM_PATH}/include")
     message(FATAL_ERROR "LLVM include path does not exist!")
-endif()
+endif ()
 
 # Don't use C++ 20 modules
 set(CMAKE_CXX_SCAN_FOR_MODULES 0)
@@ -63,38 +63,57 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(opal)
 
 add_executable(obsidian
-    obsidian/obsidian-main.cpp
-    obsidian/types.hpp
-    obsidian/templates.hpp
-    obsidian/generator.hpp
-    obsidian/generator.cpp
+        obsidian/obsidian-main.cpp
+        obsidian/types.hpp
+        obsidian/templates.hpp
+        obsidian/generator.hpp
+        obsidian/generator.cpp
 )
 target_compile_features(obsidian PRIVATE cxx_std_20)
 target_compile_definitions(obsidian PRIVATE
-    OBS_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
-    OBS_VERSION_MINOR=${PROJECT_VERSION_MINOR}
-    OBS_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+        OBS_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+        OBS_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+        OBS_VERSION_PATCH=${PROJECT_VERSION_PATCH}
 )
-target_link_libraries(obsidian PRIVATE ${OBS_LLVM_PATH}/lib/libclang.lib opal)
+
+if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(obsidian PRIVATE ${OBS_LLVM_PATH}/lib/libclang.lib opal)
+else ()
+    target_link_libraries(obsidian PRIVATE ${OBS_LLVM_PATH}/lib/libclang.so opal)
+endif ()
 target_include_directories(obsidian PRIVATE ${OBS_LLVM_PATH}/include)
 target_include_directories(obsidian PUBLIC include)
 
 # Copy file before building the executable
-add_custom_command(TARGET obsidian PRE_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${OBS_LLVM_PATH}/bin/libclang.dll
-        ${CMAKE_BINARY_DIR}/libclang.dll
-        COMMENT "Copying libclang.dll to output directory"
-)
+if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+    add_custom_command(TARGET obsidian PRE_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+            ${OBS_LLVM_PATH}/bin/libclang.dll
+            ${CMAKE_BINARY_DIR}/libclang.dll
+            COMMENT "Copying libclang.dll to output directory"
+    )
+endif ()
 
 if (OBS_BUILD_TESTS)
     enable_testing()
     add_subdirectory(test-cpp)
 endif ()
 
+# Set RPATH so obsidian finds shared libraries next to itself.
+if (NOT CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+    set_target_properties(obsidian PROPERTIES
+        INSTALL_RPATH "$ORIGIN"
+        BUILD_WITH_INSTALL_RPATH FALSE
+    )
+endif ()
+
 # Install
-install(TARGETS obsidian RUNTIME DESTINATION .)
-install(FILES ${OBS_LLVM_PATH}/bin/libclang.dll DESTINATION .)
-install(FILES include/obs/obs.hpp DESTINATION include/obs)
-install(FILES LICENSE DESTINATION .)
-install(FILES LLVM-LICENSE DESTINATION .)
+    install(TARGETS obsidian RUNTIME DESTINATION .)
+if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+    install(FILES ${OBS_LLVM_PATH}/bin/libclang.dll DESTINATION .)
+else()
+    install(FILES ${OBS_LLVM_PATH}/lib/libclang.so DESTINATION .)
+endif()
+    install(FILES include/obs/obs.hpp DESTINATION include/obs)
+    install(FILES LICENSE DESTINATION .)
+    install(FILES LLVM-LICENSE DESTINATION .)

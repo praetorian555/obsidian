@@ -18,8 +18,6 @@ using u64 = Opal::u64;
 using f32 = Opal::f32;
 using f64 = Opal::f64;
 
-using size_t = u64;
-
 struct CppEnumConstant
 {
     Opal::StringUtf8 name;

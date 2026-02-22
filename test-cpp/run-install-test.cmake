@@ -23,6 +23,15 @@ if (NOT DEFINED OUTPUT_DIR)
     message(FATAL_ERROR "OUTPUT_DIR is not defined")
 endif ()
 
+# Determine platform-specific settings.
+if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+    set(EXE_SUFFIX ".exe")
+    set(IS_WINDOWS TRUE)
+else ()
+    set(EXE_SUFFIX "")
+    set(IS_WINDOWS FALSE)
+endif ()
+
 set(INSTALL_PREFIX "${OUTPUT_DIR}/install")
 
 # Clean previous install.
@@ -38,10 +47,10 @@ if (NOT INSTALL_RESULT EQUAL 0)
 endif ()
 
 # Verify expected files exist.
-if (NOT EXISTS "${INSTALL_PREFIX}/obsidian.exe")
-    message(FATAL_ERROR "obsidian.exe not found in install directory")
+if (NOT EXISTS "${INSTALL_PREFIX}/obsidian${EXE_SUFFIX}")
+    message(FATAL_ERROR "obsidian${EXE_SUFFIX} not found in install directory")
 endif ()
-if (NOT EXISTS "${INSTALL_PREFIX}/libclang.dll")
+if (IS_WINDOWS AND NOT EXISTS "${INSTALL_PREFIX}/libclang.dll")
     message(FATAL_ERROR "libclang.dll not found in install directory")
 endif ()
 if (NOT EXISTS "${INSTALL_PREFIX}/include/obs/obs.hpp")
@@ -59,7 +68,7 @@ set(GEN_OUTPUT "${OUTPUT_DIR}/gen")
 file(MAKE_DIRECTORY "${GEN_OUTPUT}")
 
 # Build obsidian arguments.
-set(OBSIDIAN_CMD "${INSTALL_PREFIX}/obsidian.exe"
+set(OBSIDIAN_CMD "${INSTALL_PREFIX}/obsidian${EXE_SUFFIX}"
     input-dir=${INPUT_DIR}
     output-dir=${GEN_OUTPUT}
 )
