@@ -643,8 +643,8 @@ int main(int argc, const char** argv)
         return 1;
     }
 
-    u64 mark = linear_allocator.Mark();
-    Opal::GetLogger().Info("Obsidian", "Scratch allocator memory leaked: {}", mark);
+    // u64 mark = linear_allocator.Mark();
+    // Opal::GetLogger().Info("Obsidian", "Scratch allocator memory leaked: {}", mark);
 
     return 0;
 }
