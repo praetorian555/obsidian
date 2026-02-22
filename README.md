@@ -13,8 +13,27 @@ The macros expand to nothing — they serve only as markers for the parser.
 ## Prerequisites
 
 - **CMake 3.28+**
-- **C++20 compiler** (MSVC 17+ on Windows, GCC/Clang on Linux)
-- **LLVM/Clang installation** with libclang (header files and libraries)
+- **C++20 compiler** (MSVC 17+ on Windows, GCC 14+ or Clang 20+ on Linux)
+- **LLVM/Clang installation** with libclang (header files and shared libraries)
+
+### Installing LLVM
+
+**Windows:** Install LLVM via [Chocolatey](https://chocolatey.org/) or download the installer from the [LLVM releases page](https://github.com/llvm/llvm-project/releases). Chocolatey installs to `C:/Program Files/LLVM` by default.
+
+```bash
+choco install llvm --yes
+```
+
+**Linux (Ubuntu/Debian):** Use the official [LLVM apt repository](https://apt.llvm.org/). You need both the LLVM toolchain and the libclang development package.
+
+```bash
+wget https://apt.llvm.org/llvm.sh
+chmod +x llvm.sh
+sudo ./llvm.sh 20
+sudo apt-get install -y libclang-20-dev
+```
+
+This installs LLVM to `/usr/lib/llvm-20`.
 
 The [Opal](https://github.com/praetorian555/opal) utility library is fetched automatically via CMake FetchContent.
 
@@ -30,7 +49,7 @@ cmake -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DOBS_LLVM_PATH=<pat
 cmake --build build
 ```
 
-`OBS_LLVM_PATH` must point to the root of your LLVM installation (containing `bin/`, `lib/`, and `include/` directories). On Windows, `libclang.dll` is automatically copied to the build output.
+`OBS_LLVM_PATH` must point to the root of your LLVM installation (containing `bin/`, `lib/`, and `include/` directories). On both platforms libclang dynamic library is copied to the output directory.
 
 ### Build Options
 
