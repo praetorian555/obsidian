@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  windows:
     name: "Windows MSVC ${{ matrix.configuration }}"
     runs-on: windows-latest
     strategy:
@@ -36,3 +36,48 @@ jobs:
 
     - name: Run tests
       run: ctest --test-dir ${{ github.workspace }}/build -C ${{ matrix.configuration }} --output-on-failure
+
+  linux:
+    name: "Linux ${{ matrix.compiler }} ${{ matrix.configuration }}"
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, RelWithDebInfo, Release]
+        compiler: [gcc, clang]
+        hardening: [OFF]
+        include:
+          - compiler: gcc
+            cc: gcc-14
+            cxx: g++-14
+          - compiler: clang
+            cc: clang-20
+            cxx: clang++-20
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+
+    - name: Install LLVM
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 20
+        sudo apt-get install -y libclang-20-dev
+
+    - name: Configure CMake
+      run: >
+        cmake -B ${{ github.workspace }}/build
+        -G "Unix Makefiles"
+        -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+        -DCMAKE_C_COMPILER=${{ matrix.cc }}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+        -DOBS_LLVM_PATH="/usr/lib/llvm-20"
+        -DOBS_BUILD_TESTS=ON
+        -DOBS_HARDENING=${{ matrix.hardening }}
+
+    - name: Build
+      run: cmake --build ${{ github.workspace }}/build
+
+    - name: Run tests
+      run: ctest --test-dir ${{ github.workspace }}/build --output-on-failure
