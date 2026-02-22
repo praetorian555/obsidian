@@ -418,8 +418,7 @@ Opal::DynamicArray<const char*> BuildClangArgs(const ObsidianArguments& program_
     return args_array;
 }
 
-CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXIndex index,
-                                        const Opal::DynamicArray<const char*>& args_array)
+CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXIndex index, const Opal::DynamicArray<const char*>& args_array)
 {
     CXTranslationUnit translation_unit;
     CXErrorCode error_code = clang_parseTranslationUnit2(index, input_file.GetData(), args_array.GetData(), args_array.GetSize(), nullptr,
@@ -485,6 +484,7 @@ void Run(ObsidianArguments& arguments)
         Opal::GetLogger().Info("Obsidian", "Compiling file: {}", arguments.input_file.GetData());
         ProcessTranslationUnit(context, index, arguments.input_file, clang_args);
         context.input_files.PushBack(arguments.input_file);
+        Opal::GetScratchAllocator()->Reset();
     }
     else if (!arguments.input_dir.IsEmpty())
     {
@@ -504,6 +504,7 @@ void Run(ObsidianArguments& arguments)
             Opal::GetLogger().Info("Obsidian", "Compiling file: {}", entries[i].path.GetData());
             ProcessTranslationUnit(context, index, entries[i].path, clang_args);
             context.input_files.PushBack(entries[i].path);
+            Opal::GetScratchAllocator()->Reset();
         }
     }
 
@@ -516,14 +517,14 @@ void Run(ObsidianArguments& arguments)
 
     Opal::GetLogger().Info("Obsidian", "Generating reflection data...");
     Generate(context);
+    Opal::GetScratchAllocator()->Reset();
 
     clang_disposeIndex(index);
 }
 
-const Opal::DynamicArray<Opal::StringUtf8> g_supported_standards = {"c++11", "c++14", "c++17", "c++20", "c++23", "c++26", "c++27"};
-bool IsValidStandard(const Opal::StringUtf8& std)
+bool IsValidStandard(const Opal::StringUtf8& std, const Opal::ArrayView<const Opal::StringUtf8> standards)
 {
-    for (const auto& standard : g_supported_standards)
+    for (const auto& standard : standards)
     {
         if (std == standard)
         {
@@ -535,6 +536,8 @@ bool IsValidStandard(const Opal::StringUtf8& std)
 
 ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
 {
+    const Opal::DynamicArray<Opal::StringUtf8> supported_standards = {"c++11", "c++14", "c++17", "c++20", "c++23", "c++26", "c++27"};
+
     ObsidianArguments arguments;
     Opal::ProgramArgumentsBuilder builder;
     builder.AddProgramDescription("Obsidian - C++ reflection code generation tool")
@@ -544,7 +547,7 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
         .AddArgumentDefinition(arguments.output_dir, {"output-dir", "Path to the output directory for generated headers", true})
         .AddArgumentDefinition(
             arguments.standard_version,
-            {.name = "std", .desc = "Which C++ standard to use", .is_optional = true, .possible_values = g_supported_standards})
+            {.name = "std", .desc = "Which C++ standard to use", .is_optional = true, .possible_values = supported_standards})
         .AddArgumentDefinition(arguments.compile_options, {"compile-options", "Comma-separated list of compile options", true})
         .AddArgumentDefinition(arguments.include_directories,
                                {.name = "inc-dirs", .desc = "Comma-separated list of include directories", .is_optional = true})
@@ -576,7 +579,7 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
     {
         throw ArgumentValidationException("Output directory does not exist");
     }
-    if (arguments.standard_version.GetSize() > 6 || !IsValidStandard(arguments.standard_version))
+    if (arguments.standard_version.GetSize() > 6 || !IsValidStandard(arguments.standard_version, supported_standards))
     {
         throw ArgumentValidationException("Invalid standard version");
     }
@@ -596,6 +599,11 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
 
 int main(int argc, const char** argv)
 {
+    Opal::MallocAllocator main_allocator;
+    Opal::PushDefaultAllocator(&main_allocator);
+    Opal::LinearAllocator linear_allocator("Scratch Allocator");
+    Opal::PushScratchAllocator(&linear_allocator);
+
     Opal::Logger logger;
     logger.SetPattern("<level>: <message>\n");
     auto sink = Opal::MakeShared<Opal::LogSink, Opal::ConsoleSink>(nullptr);
@@ -634,5 +642,9 @@ int main(int argc, const char** argv)
         Opal::GetLogger().Flush();
         return 1;
     }
+
+    u64 mark = linear_allocator.Mark();
+    Opal::GetLogger().Info("Obsidian", "Scratch allocator memory leaked: {}", mark);
+
     return 0;
 }
