@@ -93,6 +93,9 @@ struct CppContext
     Opal::DynamicArray<Opal::StringUtf8> input_files;
     Opal::DynamicArray<CppEnum> enums;
     Opal::DynamicArray<CppClass> classes;
+
+    f32 compilation_duration = 0.0f;
+    f32 generation_duration = 0.0f;
 };
 
 struct ArgumentValidationException : Opal::Exception

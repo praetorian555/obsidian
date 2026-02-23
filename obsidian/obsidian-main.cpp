@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <cstring>
 
 #include "opal/file-system.h"
@@ -6,11 +5,12 @@
 #include "opal/math-base.h"
 #include "opal/paths.h"
 #include "opal/program-arguments.h"
+#include "opal/threading/thread-pool.h"
+#include "opal/time.h"
 
 #include "clang-c/Index.h"
 
 #include "generator.hpp"
-#include "templates.hpp"
 #include "types.hpp"
 
 struct CppTokens
@@ -478,39 +478,81 @@ bool IsValidExtension(const Opal::StringUtf8& extension)
     return extension == ".h" || extension == ".hpp" || extension == ".c" || extension == ".cpp";
 }
 
-void Run(ObsidianArguments& arguments)
+struct TaskData
+{
+    CppContext result;
+    Opal::SharedPtr<Opal::Task> task_handle;
+};
+
+void ProcessTranslationUnitParallel(CppContext& context, const Opal::DynamicArray<const char*>& clang_args)
+{
+    Opal::DynamicArray<Opal::DirectoryEntry> entries =
+                Opal::CollectDirectoryContents(context.arguments.input_dir, {.include_directories = false, .recursive = true});
+
+    auto cpu_info = Opal::GetCpuInfo();
+    i32 physical_core_count = static_cast<i32>(cpu_info.physical_processors.GetSize());
+    Opal::GetLogger().Info("Obsidian","Thread pool created with {} threads", physical_core_count);
+    Opal::ThreadPool thread_pool(physical_core_count, 128);
+    Opal::ChannelMPMC<CXIndex> clang_indices(physical_core_count);
+    for (i32 i = 0; i < physical_core_count; i++)
+    {
+        CXIndex index = clang_createIndex(0, 0);
+        clang_indices.transmitter.Send(index);
+    }
+    Opal::DynamicArray<TaskData> tasks;
+    tasks.Reserve(entries.GetSize());
+    for (Opal::u64 i = 0; i < entries.GetSize(); i++)
+    {
+        auto ext = Opal::Paths::GetExtension(entries[i].path);
+        if (!ext.HasValue())
+        {
+            continue;
+        }
+        if (!IsValidExtension(ext.GetValue()))
+        {
+            continue;
+        }
+        tasks.PushBack({});
+        TaskData& task = tasks.Back();
+        task.task_handle = thread_pool.AddFunctionTask(
+            [&task, file_path = entries[i].path, &clang_args, &clang_indices](Opal::Task::TransmitterType& transmitter)
+            {
+                CXIndex index = clang_indices.receiver.Receive();
+                Opal::GetLogger().Info("Obsidian", "Compiling file: {}", *file_path);
+                ProcessTranslationUnit(task.result, index, file_path, clang_args);
+                task.result.input_files.PushBack(file_path);
+                clang_indices.transmitter.Send(index);
+            });
+    }
+    for (auto& task : tasks)
+    {
+        task.task_handle->WaitForCompletion();
+        context.classes.Append(std::move(task.result.classes));
+        context.enums.Append(std::move(task.result.enums));
+        context.input_files.Append(std::move(task.result.input_files));
+    }
+}
+
+void Run(CppContext& context)
 {
     CXIndex index = clang_createIndex(0, 0);
 
-    CppContext context{.arguments = arguments};
-    Opal::DynamicArray<const char*> clang_args = BuildClangArgs(arguments);
-    if (!arguments.input_file.IsEmpty())
+    Opal::DynamicArray<const char*> clang_args = BuildClangArgs(context.arguments);
+    if (!context.arguments.input_file.IsEmpty())
     {
-        Opal::GetLogger().Info("Obsidian", "Compiling file: {}", arguments.input_file.GetData());
-        ProcessTranslationUnit(context, index, arguments.input_file, clang_args);
-        context.input_files.PushBack(arguments.input_file);
+        auto compilation_start_time = Opal::GetSeconds();
+        Opal::GetLogger().Info("Obsidian", "Compiling file: {}", context.arguments.input_file.GetData());
+        ProcessTranslationUnit(context, index, context.arguments.input_file, clang_args);
+        context.input_files.PushBack(context.arguments.input_file);
         Opal::GetScratchAllocator()->Reset();
+        context.compilation_duration = static_cast<f32>(Opal::GetSeconds() - compilation_start_time);
     }
-    else if (!arguments.input_dir.IsEmpty())
+    else if (!context.arguments.input_dir.IsEmpty())
     {
-        Opal::DynamicArray<Opal::DirectoryEntry> entries =
-            Opal::CollectDirectoryContents(arguments.input_dir, {.include_directories = false, .recursive = true});
-        for (Opal::u64 i = 0; i < entries.GetSize(); i++)
-        {
-            auto ext = Opal::Paths::GetExtension(entries[i].path);
-            if (!ext.HasValue())
-            {
-                continue;
-            }
-            if (!IsValidExtension(ext.GetValue()))
-            {
-                continue;
-            }
-            Opal::GetLogger().Info("Obsidian", "Compiling file: {}", entries[i].path.GetData());
-            ProcessTranslationUnit(context, index, entries[i].path, clang_args);
-            context.input_files.PushBack(entries[i].path);
-            Opal::GetScratchAllocator()->Reset();
-        }
+        const auto compilation_start_time = Opal::GetSeconds();
+        ProcessTranslationUnitParallel(context, clang_args);
+        Opal::GetScratchAllocator()->Reset();
+        context.compilation_duration = static_cast<f32>(Opal::GetSeconds() - compilation_start_time);
     }
 
     Opal::GetLogger().Verbose("Obsidian", "Found {} enums and {} classes", context.enums.GetSize(), context.classes.GetSize());
@@ -521,7 +563,9 @@ void Run(ObsidianArguments& arguments)
     }
 
     Opal::GetLogger().Info("Obsidian", "Generating reflection data...");
+    auto generation_start_time = Opal::GetSeconds();
     Generate(context);
+    context.generation_duration = static_cast<f32>(Opal::GetSeconds() - generation_start_time);
     Opal::GetScratchAllocator()->Reset();
 
     clang_disposeIndex(index);
@@ -604,6 +648,8 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
 
 int main(int argc, const char** argv)
 {
+    auto program_start_time = Opal::GetSeconds();
+
     Opal::MallocAllocator main_allocator;
     Opal::PushDefaultAllocator(&main_allocator);
     Opal::LinearAllocator linear_allocator("Scratch Allocator");
@@ -625,9 +671,11 @@ int main(int argc, const char** argv)
         }
     }
 
+    CppContext context;
     try
     {
         ObsidianArguments arguments = ParseAndValidateArguments(argc, argv);
+        context.arguments = arguments;
         if (arguments.verbose)
         {
             logger.SetCategoryLevel("Obsidian", Opal::LogLevel::Verbose);
@@ -635,7 +683,7 @@ int main(int argc, const char** argv)
         Opal::GetLogger().Info("Obsidian", "Obsidian {}.{}.{}", OBS_VERSION_MAJOR, OBS_VERSION_MINOR, OBS_VERSION_PATCH);
         auto version = ToString(clang_getClangVersion());
         Opal::GetLogger().Info("Obsidian", "{}", *version);
-        Run(arguments);
+        Run(context);
     }
     catch (const Opal::HelpRequestedException& e)
     {
@@ -647,6 +695,12 @@ int main(int argc, const char** argv)
         Opal::GetLogger().Flush();
         return 1;
     }
+
+    auto program_end_time = Opal::GetSeconds();
+    printf("Processed %llu files\n", context.input_files.GetSize());
+    printf("Program duration: %.2f seconds\n", program_end_time - program_start_time);
+    printf("Compilation duration: %.2f seconds\n", context.compilation_duration);
+    printf("Generation duration: %.2f seconds\n", context.generation_duration);
 
     // u64 mark = linear_allocator.Mark();
     // Opal::GetLogger().Info("Obsidian", "Scratch allocator memory leaked: {}", mark);
