@@ -531,6 +531,15 @@ void ProcessTranslationUnitParallel(CppContext& context, const Opal::DynamicArra
         context.enums.Append(std::move(task.result.enums));
         context.input_files.Append(std::move(task.result.input_files));
     }
+    while (true)
+    {
+        CXIndex index;
+        if (!clang_indices.receiver.TryReceive(index))
+        {
+            break;
+        }
+        clang_disposeIndex(index);
+    }
 }
 
 void Run(CppContext& context)
