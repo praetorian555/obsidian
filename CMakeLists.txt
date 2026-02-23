@@ -77,7 +77,7 @@ target_compile_definitions(obsidian PRIVATE
 )
 
 add_library(obsidian-interface INTERFACE include/obs/obs.hpp)
-target_include_directories(obsidian-interface PUBLIC include)
+target_include_directories(obsidian-interface INTERFACE include)
 
 
 if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
