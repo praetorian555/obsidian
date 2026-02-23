@@ -57,7 +57,7 @@ set(OPAL_SHARED_LIBS OFF)
 FetchContent_Declare(
         opal
         GIT_REPOSITORY https://github.com/praetorian555/opal
-        GIT_TAG main
+        GIT_TAG 75520d4e82b34484c04345975df6409c1d214726
         EXCLUDE_FROM_ALL
 )
 FetchContent_MakeAvailable(opal)
