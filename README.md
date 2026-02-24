@@ -103,58 +103,57 @@ struct Character
 Process a single file:
 
 ```bash
-obsidian input-file=my_types.hpp output-dir=generated \
+obsidian input-files=my_types.hpp output-dir=generated \
     compile-options=-I/usr/include,-DMY_DEFINE
 ```
 
 Process all headers in a directory (recursively finds `.h` and `.hpp` files):
 
 ```bash
-obsidian input-dir=src/include output-dir=generated \
+obsidian input-dirs=src/include output-dir=generated \
     compile-options=-Isrc/include,-DMY_DEFINE
-```
-
-### Check Version
-
-```bash
-obsidian version
-# Obsidian 0.1.0
 ```
 
 ### Command-Line Arguments
 
-| Argument | Required | Description |
-|---|---|---|
-| `version` | No | Print version and exit |
-| `input-file=<path>` | Yes* | Path to a single input header file |
-| `input-dir=<path>` | Yes* | Path to a directory of input headers (recursive) |
-| `output-dir=<path>` | Yes | Output directory for generated headers (must exist) |
-| `std=<version>` | No | C++ standard version (default: `c++20`). Supported: `c++11`, `c++14`, `c++17`, `c++20`, `c++23`, `c++26` |
-| `compile-options=<opts>` | No | Comma-separated Clang compile options |
-| `inc-dirs=<dirs>` | No | Comma-separated list of include directories (automatically prefixed with `-I`) |
-| `verbose=true` | No | Enable verbose logging output |
-| `dump-ast=true` | No | Print extracted AST metadata to stdout |
+| Argument                 | Required | Description                                                                                              |
+|--------------------------|---|----------------------------------------------------------------------------------------------------------|
+| `version`                | No | Print version and exit                                                                                   |
+ | `help`                   | No | Print help                                                                                               | 
+| `input-files=<path>`     | Yes* | Paths of multiple input header files                                                                     |
+| `input-dirs=<path>`      | Yes* | Paths to multiple directories of input headers (recursive)                                               |
+| `output-dir=<path>`      | Yes | Output directory for generated headers (must exist)                                                      |
+| `std=<version>`          | No | C++ standard version (default: `c++20`). Supported: `c++11`, `c++14`, `c++17`, `c++20`, `c++23`, `c++26` |
+| `compile-options=<opts>` | No | Comma-separated Clang compile options                                                                    |
+| `inc-dirs=<dirs>`        | No | Comma-separated list of include directories (automatically prefixed with `-I`)                           |
+| `verbose=true`           | No | Enable verbose logging output                                                                            |
+| `dump-ast=true`          | No | Print extracted AST metadata to stdout                                                                   |
 
-\*You must specify exactly one of `input-file` or `input-dir`.
+\*You must specify either `input-files` or `input-dirs` but not both.
 
 ### 3. Integrate into CMake
 
 Add a custom target that runs obsidian before building your project:
 
 ```cmake
+set(MY_APP_INCLUDE_DIRS $<JOIN:$<TARGET_PROPERTY:my_app,INCLUDE_DIRECTORIES>,,>)
+set(MY_APP_DEFINES $<JOIN:$<LIST:TRANSFORM,$<TARGET_PROPERTY:my_app,COMPILE_DEFINITIONS>,PREPEND,-D>,,>)
 add_custom_target(
     generate_reflection
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/generated
     COMMAND $<TARGET_FILE:obsidian>
-        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/my_types.hpp
+        input-files=${CMAKE_CURRENT_SOURCE_DIR}/include/my_types.hpp
         output-dir=${CMAKE_CURRENT_BINARY_DIR}/generated
-        compile-options=-I${CMAKE_CURRENT_SOURCE_DIR}/include
+        compile-options=${MY_APP_DEFINES},-Wall,-Wextra
+        inc-dirs=${MY_APP_INCLUDE_DIRS}
+        std=c++20
     DEPENDS obsidian
-    COMMENT "Generating reflection headers..."
-    VERBATIM
 )
 
 add_executable(my_app src/main.cpp)
+# So that you can see obs/obs.hpp
+target_add_libraries(my_app INTERFACE obsidian-interface)
+# So that we generate reflection data before compiling
 add_dependencies(my_app generate_reflection)
 target_include_directories(my_app PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
@@ -267,47 +266,6 @@ Character player;
 Obs::ClassCollection::Read(&hp, &player, "Character", "health");
 Obs::ClassCollection::Write(&hp, &player, "Character", "health");
 ```
-
-## Running Tests
-
-The project includes two test targets that both run the same Catch2 test suite. One generates reflection from a single file, the other from a directory:
-
-```bash
-# Windows
-./build/Debug/test-cpp-project.exe       # input-file mode
-./build/Debug/test-cpp-project-dir.exe   # input-dir mode
-
-# Linux
-./build/test-cpp-project
-./build/test-cpp-project-dir
-```
-
-## Project Structure
-
-```
-obsidian/
-    obsidian-main.cpp   # Clang AST traversal, macro detection, CLI
-    generator.cpp       # Code generation from templates
-    generator.hpp       # Generator interface
-    templates.hpp       # Embedded C++ templates with __placeholder__ tokens
-    types.hpp           # Core data structures (CppEnum, CppClass, CppProperty, etc.)
-include/obs/
-    obs.hpp             # User-facing header with OBS_ENUM/OBS_CLASS/OBS_PROP macros
-test-cpp/
-    src/main.cpp        # Catch2 tests for enum/class reflection
-    src/secondary.cpp   # Multi-TU inclusion test
-    include/types.hpp   # Test types decorated with OBS_* macros
-cmake/
-    compiler-warnings.cmake
-    compiler-options.cmake
-    sanitizers.cmake
-```
-
-## What Is Left to Implement
-
-### Features
-
-- **Separate-files output mode** — The `separate-files` flag is parsed but the code path is not implemented. When enabled, each enum/class should get its own generated header, plus dedicated headers for `EnumCollection` and `ClassCollection`.
 
 ## AI Disclosure
 
