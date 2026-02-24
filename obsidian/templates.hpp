@@ -8,9 +8,7 @@ constexpr const char* k_reflection_header_template = R"(// AUTO-GENERATED. DO NO
 #pragma once
 
 #include <cstring>
-#include <utility>
 #include <vector>
-#include <string>
 
 __refl_includes__
 

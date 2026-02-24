@@ -1,5 +1,6 @@
 #include <cstring>
 
+#include "opal/container/hash-set.h"
 #include "opal/file-system.h"
 #include "opal/logging.h"
 #include "opal/math-base.h"
@@ -47,6 +48,19 @@ CppTokens GetPrevTokens(const CXTranslationUnit& translation_unit, const CXCurso
     Opal::u32 token_count = 0;
     clang_tokenize(translation_unit, extended_range, &token_data, &token_count);
     return {translation_unit, token_data, token_count};
+}
+
+Opal::StringUtf8 GetIncludeFile(const CXTranslationUnit& translation_unit, CXToken& token)
+{
+    CXSourceLocation source_location = clang_getTokenLocation(translation_unit, token);
+
+    CXFile file;
+    u32 line = 0;
+    u32 column = 0;
+    u32 offset = 0;
+    clang_getFileLocation(source_location, &file, &line, &column, &offset);
+
+    return ToString(clang_getFileName(file));
 }
 
 void CollectScope(const CXCursor& cursor, Opal::DynamicArray<Opal::StringUtf8>& parents)
@@ -198,7 +212,8 @@ void VisitEnum(CXCursor cursor, CppContext& context)
     Opal::i32 qualifier_pos = GetMacroTokenPosition(tokens, translation_unit, "OBS_ENUM");
     if (qualifier_pos >= 0)
     {
-        CppEnum cpp_enum{.name = name, .description = ToString(clang_Cursor_getBriefCommentText(cursor))};
+        Opal::StringUtf8 file = GetIncludeFile(translation_unit, tokens.data[qualifier_pos]);
+        CppEnum cpp_enum{.containing_file_path = file, .name = name, .description = ToString(clang_Cursor_getBriefCommentText(cursor))};
         CXType underlying_type = clang_getEnumDeclIntegerType(cursor);
         cpp_enum.underlying_type = ToString(clang_getTypeSpelling(underlying_type));
         cpp_enum.underlying_type_size = clang_Type_getSizeOf(underlying_type);
@@ -293,7 +308,8 @@ void VisitClass(CXCursor cursor, CppContext& context)
     Opal::i32 qualifier_pos = GetMacroTokenPosition(tokens, translation_unit, "OBS_CLASS");
     if (qualifier_pos >= 0)
     {
-        CppClass cpp_class{.name = name, .description = ToString(clang_Cursor_getBriefCommentText(cursor))};
+        Opal::StringUtf8 file = GetIncludeFile(translation_unit, tokens.data[qualifier_pos]);
+        CppClass cpp_class{.containing_file_path = file, .name = name, .description = ToString(clang_Cursor_getBriefCommentText(cursor))};
         cpp_class.is_struct = clang_getCursorKind(cursor) == CXCursor_StructDecl;
         CXType type = clang_getCursorType(cursor);
         cpp_class.alignment = clang_Type_getAlignOf(type);
@@ -464,6 +480,31 @@ CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXInd
     return translation_unit;
 }
 
+void RemoveDuplicates(CppContext& context)
+{
+    Opal::HashSet<Opal::StringUtf8> files_to_include;
+    Opal::HashMap<Opal::StringUtf8, CppClass> class_map;
+    for (auto& class_ : context.classes)
+    {
+        const Opal::StringUtf8 normalized_path = Opal::Paths::NormalizePath(class_.containing_file_path);
+        files_to_include.Insert(normalized_path);
+        class_map.Insert(class_.full_name, std::move(class_));
+    }
+    context.classes = class_map.ToArrayOfValues();
+    Opal::HashMap<Opal::StringUtf8, CppEnum> enum_map;
+    for (auto& enum_ : context.enums)
+    {
+        const Opal::StringUtf8 normalized_path = Opal::Paths::NormalizePath(enum_.containing_file_path);
+        files_to_include.Insert(normalized_path);
+        enum_map.Insert(enum_.full_name, std::move(enum_));
+    }
+    context.enums = enum_map.ToArrayOfValues();
+    for (auto& path : files_to_include)
+    {
+        context.files_to_include.PushBack(std::move(path));
+    }
+}
+
 void ProcessTranslationUnit(CppContext& context, CXIndex index, const Opal::StringUtf8& input_file,
                             const Opal::DynamicArray<const char*>& clang_args)
 {
@@ -471,6 +512,7 @@ void ProcessTranslationUnit(CppContext& context, CXIndex index, const Opal::Stri
     CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
     clang_visitChildren(cursor, Visitor, &context);
     clang_disposeTranslationUnit(translation_unit);
+    RemoveDuplicates(context);
 }
 
 bool IsValidExtension(const Opal::StringUtf8& extension)
@@ -487,11 +529,11 @@ struct TaskData
 void ProcessTranslationUnitParallel(CppContext& context, const Opal::DynamicArray<const char*>& clang_args)
 {
     Opal::DynamicArray<Opal::DirectoryEntry> entries =
-                Opal::CollectDirectoryContents(context.arguments.input_dir, {.include_directories = false, .recursive = true});
+        Opal::CollectDirectoryContents(context.arguments.input_dir, {.include_directories = false, .recursive = true});
 
     auto cpu_info = Opal::GetCpuInfo();
     i32 physical_core_count = static_cast<i32>(cpu_info.physical_processors.GetSize());
-    Opal::GetLogger().Info("Obsidian","Thread pool created with {} threads", physical_core_count);
+    Opal::GetLogger().Info("Obsidian", "Thread pool created with {} threads", physical_core_count);
     Opal::ThreadPool thread_pool(physical_core_count, 128);
     Opal::ChannelMPMC<CXIndex> clang_indices(physical_core_count);
     for (i32 i = 0; i < physical_core_count; i++)
@@ -531,6 +573,7 @@ void ProcessTranslationUnitParallel(CppContext& context, const Opal::DynamicArra
         context.enums.Append(std::move(task.result.enums));
         context.input_files.Append(std::move(task.result.input_files));
     }
+    RemoveDuplicates(context);
     while (true)
     {
         CXIndex index;

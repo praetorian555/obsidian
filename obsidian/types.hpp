@@ -33,6 +33,7 @@ struct CppAttribute
 
 struct CppEnum
 {
+    Opal::StringUtf8 containing_file_path;
     Opal::StringUtf8 name;
     Opal::StringUtf8 full_name;
     Opal::StringUtf8 scope;
@@ -60,6 +61,7 @@ struct CppProperty
 
 struct CppClass
 {
+    Opal::StringUtf8 containing_file_path;
     Opal::StringUtf8 name;
     Opal::StringUtf8 full_name;
     Opal::StringUtf8 scope;
@@ -93,6 +95,7 @@ struct CppContext
     Opal::DynamicArray<Opal::StringUtf8> input_files;
     Opal::DynamicArray<CppEnum> enums;
     Opal::DynamicArray<CppClass> classes;
+    Opal::DynamicArray<Opal::StringUtf8> files_to_include;
 
     f32 compilation_duration = 0.0f;
     f32 generation_duration = 0.0f;
