@@ -517,7 +517,7 @@ void ProcessTranslationUnit(CppContext& context, CXIndex index, const Opal::Stri
 
 bool IsValidExtension(const Opal::StringUtf8& extension)
 {
-    return extension == ".h" || extension == ".hpp" || extension == ".c" || extension == ".cpp";
+    return extension == ".h" || extension == ".hpp";
 }
 
 struct TaskData
@@ -528,9 +528,6 @@ struct TaskData
 
 void ProcessTranslationUnitParallel(CppContext& context, const Opal::DynamicArray<const char*>& clang_args)
 {
-    Opal::DynamicArray<Opal::DirectoryEntry> entries =
-        Opal::CollectDirectoryContents(context.arguments.input_dir, {.include_directories = false, .recursive = true});
-
     auto cpu_info = Opal::GetCpuInfo();
     i32 physical_core_count = static_cast<i32>(cpu_info.physical_processors.GetSize());
     Opal::GetLogger().Info("Obsidian", "Thread pool created with {} threads", physical_core_count);
@@ -542,28 +539,25 @@ void ProcessTranslationUnitParallel(CppContext& context, const Opal::DynamicArra
         clang_indices.transmitter.Send(index);
     }
     Opal::DynamicArray<TaskData> tasks;
-    tasks.Reserve(entries.GetSize());
-    for (Opal::u64 i = 0; i < entries.GetSize(); i++)
+    tasks.Reserve(context.input_files.GetSize());
+    for (const auto& path : context.input_files)
     {
-        auto ext = Opal::Paths::GetExtension(entries[i].path);
-        if (!ext.HasValue())
-        {
-            continue;
-        }
-        if (!IsValidExtension(ext.GetValue()))
-        {
-            continue;
-        }
         tasks.PushBack({});
         TaskData& task = tasks.Back();
         task.task_handle = thread_pool.AddFunctionTask(
-            [&task, file_path = entries[i].path, &clang_args, &clang_indices](Opal::Task::TransmitterType& transmitter)
+            [path, &task, &clang_args, &clang_indices](Opal::Task::TransmitterType& transmitter)
             {
-                CXIndex index = clang_indices.receiver.Receive();
-                Opal::GetLogger().Info("Obsidian", "Compiling file: {}", *file_path);
-                ProcessTranslationUnit(task.result, index, file_path, clang_args);
-                task.result.input_files.PushBack(file_path);
-                clang_indices.transmitter.Send(index);
+                try
+                {
+                    CXIndex index = clang_indices.receiver.Receive();
+                    Opal::GetLogger().Info("Obsidian", "Compiling file: {}", *path);
+                    ProcessTranslationUnit(task.result, index, path, clang_args);
+                    clang_indices.transmitter.Send(index);
+                } catch (const Opal::Exception& exception)
+                {
+                    Opal::GetLogger().Error("Obsidian", *exception.What());
+                    exit(1);
+                }
             });
     }
     for (auto& task : tasks)
@@ -571,7 +565,6 @@ void ProcessTranslationUnitParallel(CppContext& context, const Opal::DynamicArra
         task.task_handle->WaitForCompletion();
         context.classes.Append(std::move(task.result.classes));
         context.enums.Append(std::move(task.result.enums));
-        context.input_files.Append(std::move(task.result.input_files));
     }
     RemoveDuplicates(context);
     while (true)
@@ -590,22 +583,33 @@ void Run(CppContext& context)
     CXIndex index = clang_createIndex(0, 0);
 
     Opal::DynamicArray<const char*> clang_args = BuildClangArgs(context.arguments);
-    if (!context.arguments.input_file.IsEmpty())
+    if (!context.arguments.input_files.IsEmpty())
     {
-        auto compilation_start_time = Opal::GetSeconds();
-        Opal::GetLogger().Info("Obsidian", "Compiling file: {}", context.arguments.input_file.GetData());
-        ProcessTranslationUnit(context, index, context.arguments.input_file, clang_args);
-        context.input_files.PushBack(context.arguments.input_file);
-        Opal::GetScratchAllocator()->Reset();
-        context.compilation_duration = static_cast<f32>(Opal::GetSeconds() - compilation_start_time);
+        for (auto& path : context.arguments.input_files)
+        {
+            context.input_files.PushBack(std::move(path));
+        }
     }
-    else if (!context.arguments.input_dir.IsEmpty())
+    if (!context.arguments.input_dirs.IsEmpty())
     {
-        const auto compilation_start_time = Opal::GetSeconds();
-        ProcessTranslationUnitParallel(context, clang_args);
-        Opal::GetScratchAllocator()->Reset();
-        context.compilation_duration = static_cast<f32>(Opal::GetSeconds() - compilation_start_time);
+        Opal::DynamicArray<Opal::DirectoryEntry> dir_entries;
+        for (const auto& input_dir : context.arguments.input_dirs)
+        {
+            auto entries = Opal::CollectDirectoryContents(input_dir, {.include_directories = false, .recursive = true});
+            dir_entries.Append(std::move(entries));
+        }
+        for (auto& input_dir : dir_entries)
+        {
+            Opal::StringUtf8 ext = Opal::Paths::GetExtension(input_dir.path).GetValue();
+            if (IsValidExtension(ext))
+            {
+                context.input_files.PushBack(std::move(input_dir.path));
+            }
+        }
     }
+    const auto compilation_start_time = Opal::GetSeconds();
+    ProcessTranslationUnitParallel(context, clang_args);
+    context.compilation_duration = static_cast<f32>(Opal::GetSeconds() - compilation_start_time);
 
     Opal::GetLogger().Verbose("Obsidian", "Found {} enums and {} classes", context.enums.GetSize(), context.classes.GetSize());
 
@@ -618,7 +622,6 @@ void Run(CppContext& context)
     auto generation_start_time = Opal::GetSeconds();
     Generate(context);
     context.generation_duration = static_cast<f32>(Opal::GetSeconds() - generation_start_time);
-    Opal::GetScratchAllocator()->Reset();
 
     clang_disposeIndex(index);
 }
@@ -643,8 +646,8 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
     Opal::ProgramArgumentsBuilder builder;
     builder.AddProgramDescription("Obsidian - C++ reflection code generation tool")
         .AddUsageExample("obsidian input-file=my_types.hpp output-dir=generated compile-options=\"-I/usr/include,-DMY_DEFINE\"")
-        .AddArgumentDefinition(arguments.input_file, {"input-file", "Path to a single input header file", true})
-        .AddArgumentDefinition(arguments.input_dir, {"input-dir", "Path to a directory with input header files", true})
+        .AddArgumentDefinition(arguments.input_files, {"input-files", "Paths to header files to process", true})
+        .AddArgumentDefinition(arguments.input_dirs, {"input-dirs", "Paths to directories with input header files to process", true})
         .AddArgumentDefinition(arguments.output_dir, {"output-dir", "Path to the output directory for generated headers", true})
         .AddArgumentDefinition(
             arguments.standard_version,
@@ -656,19 +659,44 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
         .AddArgumentDefinition(arguments.should_dump_ast, {"dump-ast", "Dump the extracted AST metadata", true});
     builder.Build(argv, static_cast<Opal::u32>(argc));
 
-    if (!arguments.input_file.IsEmpty() && !arguments.input_dir.IsEmpty())
+    if (!arguments.input_files.IsEmpty() && !arguments.input_dirs.IsEmpty())
     {
         throw ArgumentValidationException("You must specify either input-file or input-dir, not both");
     }
-    if (!arguments.input_file.IsEmpty() && !Opal::Exists(arguments.input_file))
+    if (!arguments.input_files.IsEmpty())
     {
-        throw ArgumentValidationException("Input file does not exist");
+        for (const auto& file : arguments.input_files)
+        {
+            if (!Opal::Exists(file))
+            {
+                throw ArgumentValidationException("Input file does not exist");
+            }
+            if (!Opal::IsFile(file))
+            {
+                throw ArgumentValidationException("Input file is not actually a file!");
+            }
+            Opal::StringUtf8 ext = Opal::Paths::GetExtension(file).GetValue();
+            if (!IsValidExtension(ext))
+            {
+                throw ArgumentValidationException("Input file extension is not valid!");
+            }
+        }
     }
-    if (!arguments.input_dir.IsEmpty() && !Opal::Exists(arguments.input_dir))
+    if (!arguments.input_dirs.IsEmpty())
     {
-        throw ArgumentValidationException("Input directory does not exist");
+        for (const auto& dir : arguments.input_dirs)
+        {
+            if (!Opal::Exists(dir))
+            {
+                throw ArgumentValidationException("Input directory does not exist");
+            }
+            if (!Opal::IsDirectory(dir))
+            {
+                throw ArgumentValidationException("Input directory is not actually a directory!");
+            }
+        }
     }
-    if (arguments.input_file.IsEmpty() && arguments.input_dir.IsEmpty())
+    if (arguments.input_files.IsEmpty() && arguments.input_dirs.IsEmpty())
     {
         throw ArgumentValidationException("Neither input file nor input directory were provided");
     }
@@ -704,8 +732,6 @@ int main(int argc, const char** argv)
 
     Opal::MallocAllocator main_allocator;
     Opal::PushDefaultAllocator(&main_allocator);
-    Opal::LinearAllocator linear_allocator("Scratch Allocator");
-    Opal::PushScratchAllocator(&linear_allocator);
 
     Opal::Logger logger;
     logger.SetPattern("<level>: <message>\n");
@@ -753,9 +779,6 @@ int main(int argc, const char** argv)
     printf("Program duration: %.2f seconds\n", program_end_time - program_start_time);
     printf("Compilation duration: %.2f seconds\n", context.compilation_duration);
     printf("Generation duration: %.2f seconds\n", context.generation_duration);
-
-    // u64 mark = linear_allocator.Mark();
-    // Opal::GetLogger().Info("Obsidian", "Scratch allocator memory leaked: {}", mark);
 
     return 0;
 }

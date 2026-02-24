@@ -75,8 +75,8 @@ struct CppClass
 
 struct ObsidianArguments
 {
-    Opal::StringUtf8 input_file;
-    Opal::StringUtf8 input_dir;
+    Opal::DynamicArray<Opal::StringUtf8> input_files;
+    Opal::DynamicArray<Opal::StringUtf8> input_dirs;
     Opal::StringUtf8 output_dir;
     Opal::StringUtf8 standard_version = "c++20";
     Opal::DynamicArray<Opal::StringUtf8> compile_options;

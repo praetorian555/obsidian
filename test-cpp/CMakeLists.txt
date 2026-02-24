@@ -24,7 +24,7 @@ add_custom_target(
         generate_dummy_reflection
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/include
         COMMAND $<TARGET_FILE:obsidian>
-        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+        input-files=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
         output-dir=${CMAKE_CURRENT_BINARY_DIR}/include
         compile-options=-DDONT_CRASH,-I${CMAKE_CURRENT_SOURCE_DIR}/include,-I${CMAKE_SOURCE_DIR}/include
         DEPENDS obsidian
@@ -76,7 +76,7 @@ add_obsidian_test(
     NAME cpp_test
     OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/include
     OBSIDIAN_ARGS
-        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+        input-files=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
         output-dir=${CMAKE_CURRENT_BINARY_DIR}/include
         std=c++20
         compile-options=${DEFINITIONS},-Wall
@@ -87,7 +87,7 @@ add_obsidian_test(
     NAME cpp_test_dir
     OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/include-dir
     OBSIDIAN_ARGS
-        input-dir=${CMAKE_CURRENT_SOURCE_DIR}/include
+        input-dirs=${CMAKE_CURRENT_SOURCE_DIR}/include
         output-dir=${CMAKE_CURRENT_BINARY_DIR}/include-dir
         compile-options=${DEFINITIONS},-Wall
         inc-dirs=${INCLUDE_DIRECTORIES}
@@ -97,7 +97,7 @@ add_obsidian_test(
     NAME cpp_test_compile_error
     OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/include-error
     OBSIDIAN_ARGS
-        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include-error/error-types.hpp
+        input-files=${CMAKE_CURRENT_SOURCE_DIR}/include-error/error-types.hpp
         output-dir=${CMAKE_CURRENT_BINARY_DIR}/include-error
         compile-options=-Wall
         inc-dirs=${INCLUDE_DIRECTORIES}
@@ -120,8 +120,8 @@ add_obsidian_test(
     NAME cpp_test_both_inputs
     OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arg-validation
     OBSIDIAN_ARGS
-        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
-        input-dir=${CMAKE_CURRENT_SOURCE_DIR}/include
+        input-files=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+        input-dirs=${CMAKE_CURRENT_SOURCE_DIR}/include
         output-dir=${CMAKE_CURRENT_BINARY_DIR}/arg-validation
     EXPECTED_EXIT_CODE 1
 )
@@ -131,7 +131,7 @@ add_obsidian_test(
     NAME cpp_test_bad_input_file
     OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arg-validation
     OBSIDIAN_ARGS
-        input-file=${CMAKE_CURRENT_SOURCE_DIR}/does-not-exist.hpp
+        input-files=${CMAKE_CURRENT_SOURCE_DIR}/does-not-exist.hpp
         output-dir=${CMAKE_CURRENT_BINARY_DIR}/arg-validation
     EXPECTED_EXIT_CODE 1
 )
@@ -141,7 +141,7 @@ add_obsidian_test(
     NAME cpp_test_bad_input_dir
     OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arg-validation
     OBSIDIAN_ARGS
-        input-dir=${CMAKE_CURRENT_SOURCE_DIR}/does-not-exist
+        input-dirs=${CMAKE_CURRENT_SOURCE_DIR}/does-not-exist
         output-dir=${CMAKE_CURRENT_BINARY_DIR}/arg-validation
     EXPECTED_EXIT_CODE 1
 )
@@ -151,7 +151,7 @@ add_obsidian_test(
     NAME cpp_test_bad_output_dir
     OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arg-validation
     OBSIDIAN_ARGS
-        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+        input-files=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
         output-dir=${CMAKE_CURRENT_BINARY_DIR}/this-output-dir-does-not-exist
     EXPECTED_EXIT_CODE 1
 )
@@ -161,7 +161,7 @@ add_obsidian_test(
     NAME cpp_test_missing_output_dir
     OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arg-validation
     OBSIDIAN_ARGS
-        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+        input-files=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
     EXPECTED_EXIT_CODE 1
 )
 
@@ -170,7 +170,7 @@ add_obsidian_test(
     NAME cpp_test_bad_std
     OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arg-validation
     OBSIDIAN_ARGS
-        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+        input-files=${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
         output-dir=${CMAKE_CURRENT_BINARY_DIR}/arg-validation
         std=c++99
     EXPECTED_EXIT_CODE 1
@@ -198,7 +198,7 @@ add_obsidian_test(
     NAME cpp_test_syntax_error
     OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/include-error
     OBSIDIAN_ARGS
-        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include-error/syntax-error.hpp
+        input-files=${CMAKE_CURRENT_SOURCE_DIR}/include-error/syntax-error.hpp
         output-dir=${CMAKE_CURRENT_BINARY_DIR}/include-error
         inc-dirs=${INCLUDE_DIRECTORIES}
     EXPECTED_EXIT_CODE 1
@@ -215,7 +215,7 @@ add_obsidian_test(
     NAME cpp_test_missing_include
     OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/include-error
     OBSIDIAN_ARGS
-        input-file=${CMAKE_CURRENT_SOURCE_DIR}/include-error/missing-include.hpp
+        input-files=${CMAKE_CURRENT_SOURCE_DIR}/include-error/missing-include.hpp
         output-dir=${CMAKE_CURRENT_BINARY_DIR}/include-error
         inc-dirs=${INCLUDE_DIRECTORIES}
     EXPECTED_EXIT_CODE 1

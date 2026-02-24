@@ -69,7 +69,7 @@ file(MAKE_DIRECTORY "${GEN_OUTPUT}")
 
 # Build obsidian arguments.
 set(OBSIDIAN_CMD "${INSTALL_PREFIX}/obsidian${EXE_SUFFIX}"
-    input-dir=${INPUT_DIR}
+    input-dirs=${INPUT_DIR}
     output-dir=${GEN_OUTPUT}
 )
 if (DEFINED INC_DIRS)
