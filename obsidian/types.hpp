@@ -1,9 +1,10 @@
 #pragma once
 
-#include "opal/types.h"
 #include "opal/container/dynamic-array.h"
 #include "opal/container/string.h"
 #include "opal/exceptions.h"
+#include "opal/logging.h"
+#include "opal/types.h"
 
 using i8 = Opal::i8;
 using i16 = Opal::i16;
@@ -78,14 +79,13 @@ struct ObsidianArguments
     Opal::DynamicArray<Opal::StringUtf8> input_files;
     Opal::DynamicArray<Opal::StringUtf8> input_dirs;
     Opal::StringUtf8 output_dir;
-    Opal::StringUtf8 standard_version = "c++20";
+    Opal::StringUtf8 standard_version = "-std=c++20";
     Opal::DynamicArray<Opal::StringUtf8> compile_options;
     Opal::DynamicArray<Opal::StringUtf8> include_directories;
     bool should_dump_ast = false;
     bool use_separate_files = false;
-    bool verbose = false;
+    Opal::LogLevel log_level = Opal::LogLevel::Error;
 
-    Opal::StringUtf8 standard_version_as_option;
     Opal::DynamicArray<Opal::StringUtf8> include_directories_as_option;
 };
 
@@ -103,7 +103,7 @@ struct CppContext
 
 struct ArgumentValidationException : Opal::Exception
 {
-    explicit ArgumentValidationException(const char* message) : Opal::Exception(Opal::StringEx(message)) {}
+    explicit ArgumentValidationException(const Opal::StringUtf8& message) : Opal::Exception(Opal::StringEx(*message)) {}
 };
 
 struct TranslationFailedException : Opal::Exception
@@ -116,8 +116,7 @@ struct TranslationFailedException : Opal::Exception
 
 struct FileWriteException : Opal::Exception
 {
-    explicit FileWriteException(const Opal::StringUtf8& file_path)
-        : Opal::Exception(Opal::StringEx("Failed to write file: ") + *file_path)
+    explicit FileWriteException(const Opal::StringUtf8& file_path) : Opal::Exception(Opal::StringEx("Failed to write file: ") + *file_path)
     {
     }
 };

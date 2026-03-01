@@ -409,7 +409,7 @@ Opal::DynamicArray<const char*> BuildClangArgs(const ObsidianArguments& program_
 {
     Opal::DynamicArray<const char*> args_array;
     args_array.Reserve(program_arguments.compile_options.GetSize() + program_arguments.include_directories_as_option.GetSize() + 1);
-    args_array.PushBack(*program_arguments.standard_version_as_option);
+    args_array.PushBack(*program_arguments.standard_version);
     for (const auto& option : program_arguments.compile_options)
     {
         args_array.PushBack(*option);
@@ -418,7 +418,7 @@ Opal::DynamicArray<const char*> BuildClangArgs(const ObsidianArguments& program_
     {
         args_array.PushBack(*dir);
     }
-    if (program_arguments.verbose)
+    if (program_arguments.log_level == Opal::LogLevel::Verbose)
     {
         Opal::StringUtf8 options_str;
         for (Opal::u64 i = 0; i < args_array.GetSize(); i++)
@@ -553,7 +553,8 @@ void ProcessTranslationUnitParallel(CppContext& context, const Opal::DynamicArra
                     Opal::GetLogger().Info("Obsidian", "Compiling file: {}", *path);
                     ProcessTranslationUnit(task.result, index, path, clang_args);
                     clang_indices.transmitter.Send(index);
-                } catch (const Opal::Exception& exception)
+                }
+                catch (const Opal::Exception& exception)
                 {
                     Opal::GetLogger().Error("Obsidian", *exception.What());
                     exit(1);
@@ -641,22 +642,31 @@ bool IsValidStandard(const Opal::StringUtf8& std, const Opal::ArrayView<const Op
 ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
 {
     const Opal::DynamicArray<Opal::StringUtf8> supported_standards = {"c++11", "c++14", "c++17", "c++20", "c++23", "c++26"};
+    const Opal::DynamicArray<Opal::StringUtf8> supported_log_levels = {"verbose", "info", "error"};
 
     ObsidianArguments arguments;
     Opal::ProgramArgumentsBuilder builder;
     builder.AddProgramDescription("Obsidian - C++ reflection code generation tool")
-        .AddUsageExample("obsidian input-file=my_types.hpp output-dir=generated compile-options=\"-I/usr/include,-DMY_DEFINE\"")
-        .AddArgumentDefinition(arguments.input_files, {"input-files", "Paths to header files to process", true})
-        .AddArgumentDefinition(arguments.input_dirs, {"input-dirs", "Paths to directories with input header files to process", true})
-        .AddArgumentDefinition(arguments.output_dir, {"output-dir", "Path to the output directory for generated headers", true})
-        .AddArgumentDefinition(
-            arguments.standard_version,
-            {.name = "std", .desc = "Which C++ standard to use", .is_optional = true, .possible_values = supported_standards})
-        .AddArgumentDefinition(arguments.compile_options, {"compile-options", "Comma-separated list of compile options", true})
-        .AddArgumentDefinition(arguments.include_directories,
-                               {.name = "inc-dirs", .desc = "Comma-separated list of include directories", .is_optional = true})
-        .AddArgumentDefinition(arguments.verbose, {"verbose", "Enable verbose logging output", true})
-        .AddArgumentDefinition(arguments.should_dump_ast, {"dump-ast", "Dump the extracted AST metadata", true});
+        .SetVersion(OBS_VERSION_MAJOR, OBS_VERSION_MINOR, OBS_VERSION_PATCH)
+        .AddUsageExample(
+            "obsidian input-files=my_types.hpp,some-folder/other-header.hpp output-dir=generated compile-options=-DMY_DEFINE,-Wall "
+            "include-dirs=include/this/dir std=c++17")
+        .AddUsageExample("obsidian input-dirs=my-lib/include,dependency/include output-dir=generated include-dirs=include/this/dir")
+        .AddArgument("input-files", "Paths to header files to process", Opal::Ref{arguments.input_files}, true)
+        .AddArgument("input-dirs", "Paths to directories with input header files to process", Opal::Ref{arguments.input_dirs}, true)
+        .AddArgument("output-dir", "Path to the output directory for generated headers", Opal::Ref{arguments.output_dir}, true)
+        .AddArgument("std", "Which C++ standard to use", Opal::Ref{arguments.standard_version}, true,
+                     Opal::HashMap<Opal::StringUtf8, Opal::StringUtf8>{{"c++11", "-std=c++11"},
+                                                                       {"c++14", "-std=c++14"},
+                                                                       {"c++17", "-std=c++17"},
+                                                                       {"c++20", "-std=c++20"},
+                                                                       {"c++23", "-std=c++23"}})
+        .AddArgument("compile-options", "Comma-separated list of compile options", Opal::Ref{arguments.compile_options}, true)
+        .AddArgument("inc-dirs", "Comma-separated list of include directories", Opal::Ref{arguments.include_directories}, true)
+        .AddArgument("log-level", "Control verbosity of logs", Opal::Ref{arguments.log_level}, true,
+                     Opal::HashMap<Opal::StringUtf8, Opal::LogLevel>{
+                         {"verbose", Opal::LogLevel::Verbose}, {"info", Opal::LogLevel::Info}, {"error", Opal::LogLevel::Error}})
+        .AddArgument("dump-ast", "Dump the extracted AST metadata", Opal::Ref{arguments.should_dump_ast}, true);
     builder.Build(argv, static_cast<Opal::u32>(argc));
 
     if (!arguments.input_files.IsEmpty() && !arguments.input_dirs.IsEmpty())
@@ -706,22 +716,16 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
     }
     if (!Opal::Exists(arguments.output_dir))
     {
-        throw ArgumentValidationException("Output directory does not exist");
-    }
-    if (arguments.standard_version.GetSize() > 6 || !IsValidStandard(arguments.standard_version, supported_standards))
-    {
-        throw ArgumentValidationException("Invalid standard version");
+        throw ArgumentValidationException("Output directory does not exist - " + arguments.output_dir);
     }
     for (const auto& dir : arguments.include_directories)
     {
         if (!Opal::Exists(dir))
         {
-            throw ArgumentValidationException("Include directory does not exist");
+            throw ArgumentValidationException("Include directory does not exist - " + dir);
         }
         arguments.include_directories_as_option.PushBack("-I" + dir);
     }
-
-    arguments.standard_version_as_option = "-std=" + arguments.standard_version;
 
     return arguments;
 }
@@ -740,30 +744,22 @@ int main(int argc, const char** argv)
     logger.RegisterCategory("Obsidian", Opal::LogLevel::Info);
     Opal::SetLogger(&logger);
 
-    for (int i = 1; i < argc; i++)
-    {
-        if (strcmp(argv[i], "version") == 0)
-        {
-            printf("Obsidian %d.%d.%d\n", OBS_VERSION_MAJOR, OBS_VERSION_MINOR, OBS_VERSION_PATCH);
-            return 0;
-        }
-    }
-
     CppContext context;
     try
     {
         ObsidianArguments arguments = ParseAndValidateArguments(argc, argv);
         context.arguments = arguments;
-        if (arguments.verbose)
-        {
-            logger.SetCategoryLevel("Obsidian", Opal::LogLevel::Verbose);
-        }
+        logger.SetCategoryLevel("Obsidian", arguments.log_level);
         Opal::GetLogger().Info("Obsidian", "Obsidian {}.{}.{}", OBS_VERSION_MAJOR, OBS_VERSION_MINOR, OBS_VERSION_PATCH);
         auto version = ToString(clang_getClangVersion());
         Opal::GetLogger().Info("Obsidian", "{}", *version);
         Run(context);
     }
     catch (const Opal::HelpRequestedException& e)
+    {
+        return 0;
+    }
+    catch (const Opal::VersionRequestedException& e)
     {
         return 0;
     }
