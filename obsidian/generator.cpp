@@ -11,16 +11,16 @@
 
 static Opal::StringUtf8 ReplaceAll(const Opal::StringUtf8& source, const char* placeholder, const Opal::StringUtf8& replacement)
 {
-    Opal::StringUtf8 result = source;
+    Opal::StringUtf8 result = source.Clone();
     const Opal::u64 placeholder_len = strlen(placeholder);
     Opal::u64 pos = Opal::Find<Opal::StringUtf8>(result, placeholder);
     while (pos != Opal::StringUtf8::k_npos)
     {
-        Opal::StringUtf8 prefix = Opal::GetSubString(result, 0, pos).GetValue();
+        Opal::StringUtf8 prefix = std::move(Opal::GetSubString(result, 0, pos).GetValue());
         Opal::StringUtf8 suffix;
         if (pos + placeholder_len < result.GetSize())
         {
-            suffix = Opal::GetSubString(result, pos + placeholder_len).GetValue();
+            suffix = std::move(Opal::GetSubString(result, pos + placeholder_len).GetValue());
         }
         result = prefix + replacement + suffix;
         pos = Opal::Find<Opal::StringUtf8>(result, placeholder, pos + replacement.GetSize());
@@ -89,7 +89,7 @@ static Opal::StringUtf8 QualifiedConstantName(const CppEnum& cpp_enum, const Cpp
     {
         return cpp_enum.scope + "::" + constant.name;
     }
-    return constant.name;
+    return constant.name.Clone();
 }
 
 static Opal::StringUtf8 GenerateAttributeList(const Opal::DynamicArray<CppAttribute>& attributes)

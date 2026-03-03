@@ -118,7 +118,7 @@ void CollectAttributes(const Opal::ArrayView<CXToken>& tokens, const CXTranslati
                     Opal::StringUtf8 parameter = ToString(clang_getTokenSpelling(translation_unit, tokens[i]));
                     if (StartsWith<Opal::StringUtf8>(parameter, "\""))
                     {
-                        parameter = Opal::GetSubString(parameter, 1, parameter.GetSize() - 2).GetValue();
+                        parameter = std::move(Opal::GetSubString(parameter, 1, parameter.GetSize() - 2).GetValue());
                     }
                     if (parameter.IsEmpty())
                     {
@@ -142,7 +142,7 @@ void CollectAttributes(const Opal::ArrayView<CXToken>& tokens, const CXTranslati
                     {
                         attribute.value = "1";
                     }
-                    attributes.PushBack(attribute);
+                    attributes.PushBack(std::move(attribute));
                 }
                 break;
             }
@@ -213,7 +213,7 @@ void VisitEnum(CXCursor cursor, CppContext& context)
     if (qualifier_pos >= 0)
     {
         Opal::StringUtf8 file = GetIncludeFile(translation_unit, tokens.data[qualifier_pos]);
-        CppEnum cpp_enum{.containing_file_path = file, .name = name, .description = ToString(clang_Cursor_getBriefCommentText(cursor))};
+        CppEnum cpp_enum{.containing_file_path = std::move(file), .name = name.Clone(), .description = ToString(clang_Cursor_getBriefCommentText(cursor))};
         CXType underlying_type = clang_getEnumDeclIntegerType(cursor);
         cpp_enum.underlying_type = ToString(clang_getTypeSpelling(underlying_type));
         cpp_enum.underlying_type_size = clang_Type_getSizeOf(underlying_type);
@@ -231,12 +231,12 @@ void VisitEnum(CXCursor cursor, CppContext& context)
         }
         if (!scope.IsEmpty())
         {
-            scope = Opal::GetSubString(scope, 0, scope.GetSize() - 2).GetValue();
+            scope = std::move(Opal::GetSubString(scope, 0, scope.GetSize() - 2).GetValue());
         }
         cpp_enum.full_name = scope + "::" + cpp_enum.name;
         cpp_enum.scope = Opal::Move(scope);
 
-        context.enums.PushBack(cpp_enum);
+        context.enums.PushBack(std::move(cpp_enum));
     }
 }
 
@@ -273,14 +273,14 @@ CXChildVisitResult VisitorClassProperty(CXCursor cursor, CXCursor parent, CXClie
         }
         if (!scope.IsEmpty())
         {
-            scope = Opal::GetSubString(scope, 0, scope.GetSize() - 2).GetValue();
+            scope = std::move(Opal::GetSubString(scope, 0, scope.GetSize() - 2).GetValue());
         }
-        property.type_scope = scope;
-        property.full_type = scope.IsEmpty() ? property.type : scope + "::" + property.type;
+        property.type_scope = std::move(scope);
+        property.full_type = property.type_scope.IsEmpty() ? property.type.Clone() : property.type_scope + "::" + property.type;
     }
     else
     {
-        property.full_type = property.type;
+        property.full_type = property.type.Clone();
     }
 
     property.description = ToString(clang_Cursor_getBriefCommentText(cursor));
@@ -309,7 +309,7 @@ void VisitClass(CXCursor cursor, CppContext& context)
     if (qualifier_pos >= 0)
     {
         Opal::StringUtf8 file = GetIncludeFile(translation_unit, tokens.data[qualifier_pos]);
-        CppClass cpp_class{.containing_file_path = file, .name = name, .description = ToString(clang_Cursor_getBriefCommentText(cursor))};
+        CppClass cpp_class{.containing_file_path = std::move(file), .name = name.Clone(), .description = ToString(clang_Cursor_getBriefCommentText(cursor))};
         cpp_class.is_struct = clang_getCursorKind(cursor) == CXCursor_StructDecl;
         CXType type = clang_getCursorType(cursor);
         cpp_class.alignment = clang_Type_getAlignOf(type);
@@ -328,12 +328,12 @@ void VisitClass(CXCursor cursor, CppContext& context)
         }
         if (!scope.IsEmpty())
         {
-            scope = Opal::GetSubString(scope, 0, scope.GetSize() - 2).GetValue();
+            scope = std::move(Opal::GetSubString(scope, 0, scope.GetSize() - 2).GetValue());
         }
         cpp_class.full_name = scope + "::" + cpp_class.name;
         cpp_class.scope = Opal::Move(scope);
 
-        context.classes.PushBack(cpp_class);
+        context.classes.PushBack(std::move(cpp_class));
     }
 }
 
@@ -486,17 +486,17 @@ void RemoveDuplicates(CppContext& context)
     Opal::HashMap<Opal::StringUtf8, CppClass> class_map;
     for (auto& class_ : context.classes)
     {
-        const Opal::StringUtf8 normalized_path = Opal::Paths::NormalizePath(class_.containing_file_path);
-        files_to_include.Insert(normalized_path);
-        class_map.Insert(class_.full_name, std::move(class_));
+        Opal::StringUtf8 normalized_path = Opal::Paths::NormalizePath(class_.containing_file_path);
+        files_to_include.Insert(std::move(normalized_path));
+        class_map.Insert(class_.full_name.Clone(), std::move(class_));
     }
     context.classes = class_map.ToArrayOfValues();
     Opal::HashMap<Opal::StringUtf8, CppEnum> enum_map;
     for (auto& enum_ : context.enums)
     {
-        const Opal::StringUtf8 normalized_path = Opal::Paths::NormalizePath(enum_.containing_file_path);
-        files_to_include.Insert(normalized_path);
-        enum_map.Insert(enum_.full_name, std::move(enum_));
+        Opal::StringUtf8 normalized_path = Opal::Paths::NormalizePath(enum_.containing_file_path);
+        files_to_include.Insert(std::move(normalized_path));
+        enum_map.Insert(enum_.full_name.Clone(), std::move(enum_));
     }
     context.enums = enum_map.ToArrayOfValues();
     for (auto& path : files_to_include)
@@ -545,13 +545,13 @@ void ProcessTranslationUnitParallel(CppContext& context, const Opal::DynamicArra
         tasks.PushBack({});
         TaskData& task = tasks.Back();
         task.task_handle = thread_pool.AddFunctionTask(
-            [path, &task, &clang_args, &clang_indices](Opal::Task::TransmitterType& transmitter)
+            [file_path = path.Clone(), &task, &clang_args, &clang_indices](Opal::Task::TransmitterType& transmitter)
             {
                 try
                 {
                     CXIndex index = clang_indices.receiver.Receive();
-                    Opal::GetLogger().Info("Obsidian", "Compiling file: {}", *path);
-                    ProcessTranslationUnit(task.result, index, path, clang_args);
+                    Opal::GetLogger().Info("Obsidian", "Compiling file: {}", *file_path);
+                    ProcessTranslationUnit(task.result, index, file_path, clang_args);
                     clang_indices.transmitter.Send(index);
                 }
                 catch (const Opal::Exception& exception)
@@ -596,12 +596,12 @@ void Run(CppContext& context)
         Opal::DynamicArray<Opal::DirectoryEntry> dir_entries;
         for (const auto& input_dir : context.arguments.input_dirs)
         {
-            auto entries = Opal::CollectDirectoryContents(input_dir, {.include_directories = false, .recursive = true});
+            auto entries = Opal::CollectDirectoryContents(input_dir.Clone(), {.include_directories = false, .recursive = true});
             dir_entries.Append(std::move(entries));
         }
         for (auto& input_dir : dir_entries)
         {
-            Opal::StringUtf8 ext = Opal::Paths::GetExtension(input_dir.path).GetValue();
+            Opal::StringUtf8 ext = std::move(Opal::Paths::GetExtension(input_dir.path).GetValue());
             if (IsValidExtension(ext))
             {
                 context.input_files.PushBack(std::move(input_dir.path));
@@ -641,9 +641,6 @@ bool IsValidStandard(const Opal::StringUtf8& std, const Opal::ArrayView<const Op
 
 ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
 {
-    const Opal::DynamicArray<Opal::StringUtf8> supported_standards = {"c++11", "c++14", "c++17", "c++20", "c++23", "c++26"};
-    const Opal::DynamicArray<Opal::StringUtf8> supported_log_levels = {"verbose", "info", "error"};
-
     ObsidianArguments arguments;
     Opal::ProgramArgumentsBuilder builder;
     builder.AddProgramDescription("Obsidian - C++ reflection code generation tool")
@@ -685,7 +682,7 @@ ObsidianArguments ParseAndValidateArguments(int argc, const char** argv)
             {
                 throw ArgumentValidationException("Input file is not actually a file!");
             }
-            Opal::StringUtf8 ext = Opal::Paths::GetExtension(file).GetValue();
+            Opal::StringUtf8 ext = std::move(Opal::Paths::GetExtension(file).GetValue());
             if (!IsValidExtension(ext))
             {
                 throw ArgumentValidationException("Input file extension is not valid!");
@@ -748,7 +745,7 @@ int main(int argc, const char** argv)
     try
     {
         ObsidianArguments arguments = ParseAndValidateArguments(argc, argv);
-        context.arguments = arguments;
+        context.arguments = std::move(arguments);
         logger.SetCategoryLevel("Obsidian", arguments.log_level);
         Opal::GetLogger().Info("Obsidian", "Obsidian {}.{}.{}", OBS_VERSION_MAJOR, OBS_VERSION_MINOR, OBS_VERSION_PATCH);
         auto version = ToString(clang_getClangVersion());

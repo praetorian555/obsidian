@@ -24,12 +24,29 @@ struct CppEnumConstant
     Opal::StringUtf8 name;
     Opal::StringUtf8 description;
     Opal::i64 value = -1;
+
+    CppEnumConstant Clone(Opal::AllocatorBase* = nullptr) const
+    {
+        CppEnumConstant clone;
+        clone.name = name.Clone();
+        clone.description = description.Clone();
+        clone.value = value;
+        return clone;
+    }
 };
 
 struct CppAttribute
 {
     Opal::StringUtf8 name;
     Opal::StringUtf8 value;
+
+    CppAttribute Clone(Opal::AllocatorBase* = nullptr) const
+    {
+        CppAttribute clone;
+        clone.name = name.Clone();
+        clone.value = value.Clone();
+        return clone;
+    }
 };
 
 struct CppEnum
@@ -44,6 +61,22 @@ struct CppEnum
     bool is_enum_class = false;
     Opal::DynamicArray<CppEnumConstant> constants;
     Opal::DynamicArray<CppAttribute> attributes;
+
+    CppEnum Clone(Opal::AllocatorBase* = nullptr) const
+    {
+        CppEnum clone;
+        clone.containing_file_path = containing_file_path.Clone();
+        clone.name = name.Clone();
+        clone.full_name = full_name.Clone();
+        clone.scope = scope.Clone();
+        clone.description = description.Clone();
+        clone.underlying_type = underlying_type.Clone();
+        clone.underlying_type_size = underlying_type_size;
+        clone.is_enum_class = is_enum_class;
+        clone.constants = constants.Clone();
+        clone.attributes = attributes.Clone();
+        return clone;
+    }
 };
 
 struct CppProperty
@@ -58,6 +91,22 @@ struct CppProperty
     Opal::i64 offset = 0;
     Opal::i64 size = 0;
     Opal::DynamicArray<CppAttribute> attributes;
+
+    CppProperty Clone(Opal::AllocatorBase* = nullptr) const
+    {
+        CppProperty clone;
+        clone.name = name.Clone();
+        clone.type = type.Clone();
+        clone.type_scope = type_scope.Clone();
+        clone.full_type = full_type.Clone();
+        clone.description = description.Clone();
+        clone.is_pod = is_pod;
+        clone.alignment = alignment;
+        clone.offset = offset;
+        clone.size = size;
+        clone.attributes = attributes.Clone();
+        return clone;
+    }
 };
 
 struct CppClass
@@ -72,6 +121,22 @@ struct CppClass
     Opal::i64 size = 0;
     Opal::DynamicArray<CppProperty> properties;
     Opal::DynamicArray<CppAttribute> attributes;
+
+    CppClass Clone(Opal::AllocatorBase* = nullptr) const
+    {
+        CppClass clone;
+        clone.containing_file_path = containing_file_path.Clone();
+        clone.name = name.Clone();
+        clone.full_name = full_name.Clone();
+        clone.scope = scope.Clone();
+        clone.description = description.Clone();
+        clone.is_struct = is_struct;
+        clone.alignment = alignment;
+        clone.size = size;
+        clone.properties = properties.Clone();
+        clone.attributes = attributes.Clone();
+        return clone;
+    }
 };
 
 struct ObsidianArguments
