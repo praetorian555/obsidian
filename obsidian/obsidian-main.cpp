@@ -453,7 +453,8 @@ CXTranslationUnit ParseTranslationUnit(const Opal::StringUtf8& input_file, CXInd
     {
         CXDiagnostic diagnostic = clang_getDiagnostic(translation_unit, i);
         CXDiagnosticSeverity severity = clang_getDiagnosticSeverity(diagnostic);
-        Opal::StringUtf8 message = ToString(clang_formatDiagnostic(diagnostic, clang_defaultDiagnosticDisplayOptions()));
+        u32 options = clang_defaultDiagnosticDisplayOptions();
+        Opal::StringUtf8 message = ToString(clang_formatDiagnostic(diagnostic, options));
         clang_disposeDiagnostic(diagnostic);
 
         if (severity >= CXDiagnostic_Error)
@@ -581,6 +582,22 @@ void ProcessTranslationUnitParallel(CppContext& context, const Opal::DynamicArra
 
 void Run(CppContext& context)
 {
+    if (context.arguments.log_level == Opal::LogLevel::Verbose)
+    {
+        Opal::StringUtf8 compile_options_str = "Compile Options: ";
+        for (const auto& opt : context.arguments.compile_options)
+        {
+            compile_options_str += opt + ",";
+        }
+        Opal::GetLogger().Verbose("Obsidian", "{}", *compile_options_str);
+        Opal::StringUtf8 include_directories_str = "Include Directories: ";
+        for (const auto& dir : context.arguments.include_directories)
+        {
+            include_directories_str += dir + ",";
+        }
+        Opal::GetLogger().Verbose("Obsidian", "{}", *include_directories_str);
+    }
+
     CXIndex index = clang_createIndex(0, 0);
 
     Opal::DynamicArray<const char*> clang_args = BuildClangArgs(context.arguments);
@@ -738,7 +755,7 @@ int main(int argc, const char** argv)
     logger.SetPattern("<level>: <message>\n");
     auto sink = Opal::MakeShared<Opal::LogSink, Opal::ConsoleSink>(nullptr);
     logger.AddSink(sink);
-    logger.RegisterCategory("Obsidian", Opal::LogLevel::Info);
+    logger.RegisterCategory("Obsidian", Opal::LogLevel::Verbose);
     Opal::SetLogger(&logger);
 
     CppContext context;
@@ -746,7 +763,7 @@ int main(int argc, const char** argv)
     {
         ObsidianArguments arguments = ParseAndValidateArguments(argc, argv);
         context.arguments = std::move(arguments);
-        logger.SetCategoryLevel("Obsidian", arguments.log_level);
+        logger.SetLogLevel(arguments.log_level);
         Opal::GetLogger().Info("Obsidian", "Obsidian {}.{}.{}", OBS_VERSION_MAJOR, OBS_VERSION_MINOR, OBS_VERSION_PATCH);
         auto version = ToString(clang_getClangVersion());
         Opal::GetLogger().Info("Obsidian", "{}", *version);

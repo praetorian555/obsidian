@@ -100,34 +100,34 @@ struct Character
 
 ### 2. Run the Tool
 
-Process a single file:
+Process specific files:
 
 ```bash
-obsidian input-files=my_types.hpp output-dir=generated \
-    compile-options=-I/usr/include,-DMY_DEFINE
+obsidian input-files=my_types.hpp,some-folder/other-header.hpp output-dir=generated \
+    compile-options=-DMY_DEFINE,-Wall include-dirs=include/this/dir std=c++17
 ```
 
 Process all headers in a directory (recursively finds `.h` and `.hpp` files):
 
 ```bash
-obsidian input-dirs=src/include output-dir=generated \
-    compile-options=-Isrc/include,-DMY_DEFINE
+obsidian input-dirs=my-lib/include,dependency/include output-dir=generated \
+    include-dirs=include/this/dir
 ```
 
 ### Command-Line Arguments
 
-| Argument                 | Required | Description                                                                                              |
-|--------------------------|---|----------------------------------------------------------------------------------------------------------|
-| `version`                | No | Print version and exit                                                                                   |
- | `help`                   | No | Print help                                                                                               | 
-| `input-files=<path>`     | Yes* | Paths of multiple input header files                                                                     |
-| `input-dirs=<path>`      | Yes* | Paths to multiple directories of input headers (recursive)                                               |
-| `output-dir=<path>`      | Yes | Output directory for generated headers (must exist)                                                      |
-| `std=<version>`          | No | C++ standard version (default: `c++20`). Supported: `c++11`, `c++14`, `c++17`, `c++20`, `c++23`, `c++26` |
-| `compile-options=<opts>` | No | Comma-separated Clang compile options                                                                    |
-| `inc-dirs=<dirs>`        | No | Comma-separated list of include directories (automatically prefixed with `-I`)                           |
-| `verbose=true`           | No | Enable verbose logging output                                                                            |
-| `dump-ast=true`          | No | Print extracted AST metadata to stdout                                                                   |
+| Argument                 | Required | Description                                                                                |
+|--------------------------|----------|--------------------------------------------------------------------------------------------|
+| `version`                | No       | Print version and exit                                                                     |
+| `help`                   | No       | Print help                                                                                 |
+| `input-files=<paths>`    | Yes*     | Comma-separated paths to input header files                                                |
+| `input-dirs=<paths>`     | Yes*     | Comma-separated paths to directories with input headers (recursive)                        |
+| `output-dir=<path>`      | Yes      | Output directory for generated headers (must exist)                                        |
+| `std=<version>`          | No       | C++ standard version (default: `c++20`). Supported: `c++11`, `c++14`, `c++17`, `c++20`, `c++23` |
+| `compile-options=<opts>` | No       | Comma-separated Clang compile options                                                      |
+| `inc-dirs=<dirs>`        | No       | Comma-separated list of include directories (automatically prefixed with `-I`)             |
+| `log-level=<level>`      | No       | Control verbosity of logs. Supported: `verbose`, `info`, `error` (default: `error`)        |
+| `dump-ast=true`          | No       | Dump the extracted AST metadata                                                            |
 
 \*You must specify either `input-files` or `input-dirs` but not both.
 
