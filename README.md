@@ -267,6 +267,13 @@ Obs::ClassCollection::Read(&hp, &player, "Character", "health");
 Obs::ClassCollection::Write(&hp, &player, "Character", "health");
 ```
 
+## Caching
+
+There is caching support where program will try to determine if it needs to generate reflection data again. It will deduce this
+based on if reflection.hpp exists, if input arguments changed, if application version has changed, if any of the headers used
+has been modified and if there is no new files, or old files being removed. Still there might be cases that were missed,
+so if the program is reporting that nothing changed and you know it did, simply delete obs.cache file in program directory.
+
 ## AI Disclosure
 
 Portions of this software were developed with the assistance of AI tools (Claude by Anthropic). All AI-generated code was reviewed and approved by human contributors.
