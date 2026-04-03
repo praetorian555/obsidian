@@ -598,8 +598,6 @@ void Run(CppContext& context)
         Opal::GetLogger().Verbose("Obsidian", "{}", *include_directories_str);
     }
 
-    CXIndex index = clang_createIndex(0, 0);
-
     Opal::DynamicArray<const char*> clang_args = BuildClangArgs(context.arguments);
     if (!context.arguments.input_files.IsEmpty())
     {
@@ -640,8 +638,6 @@ void Run(CppContext& context)
     auto generation_start_time = Opal::GetSeconds();
     Generate(context);
     context.generation_duration = static_cast<f32>(Opal::GetSeconds() - generation_start_time);
-
-    clang_disposeIndex(index);
 }
 
 bool IsValidStandard(const Opal::StringUtf8& std, const Opal::ArrayView<const Opal::StringUtf8> standards)
