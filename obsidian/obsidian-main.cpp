@@ -550,10 +550,14 @@ void ProcessTranslationUnitParallel(CppContext& context, const Opal::DynamicArra
             {
                 try
                 {
-                    CXIndex index = clang_indices.receiver.Receive();
-                    Opal::GetLogger().Info("Obsidian", "Compiling file: {}", *file_path);
-                    ProcessTranslationUnit(task.result, index, file_path, clang_args);
-                    clang_indices.transmitter.Send(index);
+                    auto status = clang_indices.receiver.Receive();
+                    if (status.HasValue())
+                    {
+                        const CXIndex index = status.GetValue();
+                        Opal::GetLogger().Info("Obsidian", "Compiling file: {}", *file_path);
+                        ProcessTranslationUnit(task.result, index, file_path, clang_args);
+                        clang_indices.transmitter.Send(index);
+                    }
                 }
                 catch (const Opal::Exception& exception)
                 {
@@ -572,7 +576,7 @@ void ProcessTranslationUnitParallel(CppContext& context, const Opal::DynamicArra
     while (true)
     {
         CXIndex index;
-        if (!clang_indices.receiver.TryReceive(index))
+        if (clang_indices.receiver.TryReceive(index) != Opal::ErrorCode::Success)
         {
             break;
         }
@@ -603,7 +607,7 @@ void Run(CppContext& context)
     {
         for (auto& path : context.arguments.input_files)
         {
-            context.input_files.PushBack(std::move(path));
+            context.input_files.PushBack(path.Clone());
         }
     }
     if (!context.arguments.input_dirs.IsEmpty())
