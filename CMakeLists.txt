@@ -68,6 +68,8 @@ add_executable(obsidian
         obsidian/templates.hpp
         obsidian/generator.hpp
         obsidian/generator.cpp
+        obsidian/cache.hpp
+        obsidian/cache.cpp
 )
 target_compile_features(obsidian PRIVATE cxx_std_20)
 target_compile_definitions(obsidian PRIVATE

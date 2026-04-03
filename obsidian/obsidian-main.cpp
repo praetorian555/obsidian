@@ -13,6 +13,7 @@
 
 #include "generator.hpp"
 #include "types.hpp"
+#include "cache.hpp"
 
 struct CppTokens
 {
@@ -627,6 +628,29 @@ void Run(CppContext& context)
             }
         }
     }
+
+    auto cache_start_time = Opal::GetSeconds();
+    auto cache_status = LoadCacheFromDisk();
+    if (cache_status.HasValue())
+    {
+        const Opal::StringUtf8 output_file = Opal::Paths::Combine(context.arguments.output_dir, "reflection.hpp");
+        Cache cache = std::move(cache_status.GetValue());
+        Cache new_cache = CreateCache(context.arguments, context.input_files);
+        if (Opal::Exists(output_file) && CompareCaches(cache, new_cache))
+        {
+            Opal::GetLogger().Info("Obsidian", "Everything cached, no need to generate it again...");
+            context.cache_duration = static_cast<f32>(Opal::GetSeconds() - cache_start_time);
+            return;
+        }
+        SaveCacheToDisk(new_cache);
+    }
+    else
+    {
+        Cache new_cache = CreateCache(context.arguments, context.input_files);
+        SaveCacheToDisk(new_cache);
+    }
+    context.cache_duration = static_cast<f32>(Opal::GetSeconds() - cache_start_time);
+
     const auto compilation_start_time = Opal::GetSeconds();
     ProcessTranslationUnitParallel(context, clang_args);
     context.compilation_duration = static_cast<f32>(Opal::GetSeconds() - compilation_start_time);
