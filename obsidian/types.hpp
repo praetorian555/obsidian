@@ -162,6 +162,7 @@ struct CppContext
     Opal::DynamicArray<CppClass> classes;
     Opal::DynamicArray<Opal::StringUtf8> files_to_include;
 
+    f32 cache_duration = 0.0f;
     f32 compilation_duration = 0.0f;
     f32 generation_duration = 0.0f;
 };

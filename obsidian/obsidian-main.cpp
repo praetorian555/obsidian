@@ -809,10 +809,11 @@ int main(int argc, const char** argv)
     }
 
     auto program_end_time = Opal::GetSeconds();
-    printf("Processed %llu files\n", context.input_files.GetSize());
-    printf("Program duration: %.2f seconds\n", program_end_time - program_start_time);
-    printf("Compilation duration: %.2f seconds\n", context.compilation_duration);
-    printf("Generation duration: %.2f seconds\n", context.generation_duration);
+    Opal::GetLogger().Info("Obsidian", "Processed {} files", context.input_files.GetSize());
+    Opal::GetLogger().Info("Obsidian", "Program duration: {:.2f} seconds", program_end_time - program_start_time);
+    Opal::GetLogger().Info("Obsidian", "Cache duration: {:.2f} seconds", context.cache_duration);
+    Opal::GetLogger().Info("Obsidian", "Compilation duration: {:.2f} seconds", context.compilation_duration);
+    Opal::GetLogger().Info("Obsidian", "Generation duration: {:.2f} seconds", context.generation_duration);
 
     return 0;
 }
