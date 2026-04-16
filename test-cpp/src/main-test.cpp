@@ -836,6 +836,117 @@ TEST_CASE("Malformed attributes", "[refl][attributes][malformed]")
     }
 }
 
+TEST_CASE("Compile-time class construct", "[refl][class][construct]")
+{
+    Opal::MallocAllocator allocator;
+
+    SECTION("Create GlobalPoint")
+    {
+        GlobalPoint* point = Obs::Class<GlobalPoint>::Create(&allocator);
+        REQUIRE(point != nullptr);
+        REQUIRE(point->x == 0.0f);
+        REQUIRE(point->y == 0.0f);
+        Opal::Delete(&allocator, point);
+    }
+    SECTION("Create DataStruct")
+    {
+        DataStruct* data = Obs::Class<DataStruct>::Create(&allocator);
+        REQUIRE(data != nullptr);
+        REQUIRE(data->a == 1);
+        REQUIRE(data->b == 5.0f);
+        REQUIRE(strcmp(data->c, "this is test") == 0);
+        REQUIRE(data->d == DataStruct::DataType::A);
+        REQUIRE(data->e == "this is test");
+        Opal::Delete(&allocator, data);
+    }
+    SECTION("Create Player")
+    {
+        using Player = FirstNamespace::SecondNamespace::Player;
+        Player* player = Obs::Class<Player>::Create(&allocator);
+        REQUIRE(player != nullptr);
+        REQUIRE(player->name == "unnamed");
+        REQUIRE(player->health == 100);
+        REQUIRE(player->speed == 5.0f);
+        Opal::Delete(&allocator, player);
+    }
+    SECTION("Create EmptyStruct")
+    {
+        EmptyStruct* empty = Obs::Class<EmptyStruct>::Create(&allocator);
+        REQUIRE(empty != nullptr);
+        Opal::Delete(&allocator, empty);
+    }
+}
+
+TEST_CASE("Runtime class construct", "[refl][class-collection][construct]")
+{
+    Opal::MallocAllocator allocator;
+
+    SECTION("Construct by name")
+    {
+        void* obj = Obs::ClassCollection::Construct("GlobalPoint", &allocator);
+        REQUIRE(obj != nullptr);
+        auto* point = static_cast<GlobalPoint*>(obj);
+        REQUIRE(point->x == 0.0f);
+        REQUIRE(point->y == 0.0f);
+        Opal::Delete(&allocator, point);
+    }
+    SECTION("Construct DataStruct by name")
+    {
+        void* obj = Obs::ClassCollection::Construct("DataStruct", &allocator);
+        REQUIRE(obj != nullptr);
+        auto* data = static_cast<DataStruct*>(obj);
+        REQUIRE(data->a == 1);
+        REQUIRE(data->b == 5.0f);
+        Opal::Delete(&allocator, data);
+    }
+    SECTION("Construct Player by name")
+    {
+        void* obj = Obs::ClassCollection::Construct("Player", &allocator);
+        REQUIRE(obj != nullptr);
+        auto* player = static_cast<FirstNamespace::SecondNamespace::Player*>(obj);
+        REQUIRE(player->name == "unnamed");
+        REQUIRE(player->health == 100);
+        REQUIRE(player->speed == 5.0f);
+        Opal::Delete(&allocator, player);
+    }
+    SECTION("Construct non-existent class returns nullptr")
+    {
+        void* obj = Obs::ClassCollection::Construct("NonExistentClass", &allocator);
+        REQUIRE(obj == nullptr);
+    }
+    SECTION("Construct via ClassEntry create pointer")
+    {
+        const Obs::ClassEntry* entry = nullptr;
+        REQUIRE(Obs::ClassCollection::GetClassEntry("GlobalPoint", entry));
+        void* obj = entry->create(&allocator);
+        REQUIRE(obj != nullptr);
+        auto* point = static_cast<GlobalPoint*>(obj);
+        REQUIRE(point->x == 0.0f);
+        REQUIRE(point->y == 0.0f);
+        Opal::Delete(&allocator, point);
+    }
+    SECTION("ClassEntry size and alignment")
+    {
+        const Obs::ClassEntry* entry = nullptr;
+
+        REQUIRE(Obs::ClassCollection::GetClassEntry("GlobalPoint", entry));
+        REQUIRE(entry->size == sizeof(GlobalPoint));
+        REQUIRE(entry->alignment == alignof(GlobalPoint));
+
+        REQUIRE(Obs::ClassCollection::GetClassEntry("DataStruct", entry));
+        REQUIRE(entry->size == sizeof(DataStruct));
+        REQUIRE(entry->alignment == alignof(DataStruct));
+
+        REQUIRE(Obs::ClassCollection::GetClassEntry("EmptyStruct", entry));
+        REQUIRE(entry->size == sizeof(EmptyStruct));
+        REQUIRE(entry->alignment == alignof(EmptyStruct));
+
+        REQUIRE(Obs::ClassCollection::GetClassEntry("Player", entry));
+        REQUIRE(entry->size == sizeof(FirstNamespace::SecondNamespace::Player));
+        REQUIRE(entry->alignment == alignof(FirstNamespace::SecondNamespace::Player));
+    }
+}
+
 TEST_CASE("String escaping", "[refl][escaping]")
 {
     SECTION("Enum with double quotes in description")

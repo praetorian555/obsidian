@@ -266,8 +266,10 @@ static Opal::StringUtf8 GenerateClassCollection(const Opal::DynamicArray<CppClas
         {
             entries += ",\n";
         }
+        Opal::StringUtf8 create_lambda = "[](Opal::AllocatorBase* allocator) -> void* { return Opal::New<" + cpp_class.full_name + ">(allocator); }";
         entries += "        {\"" + EscapeCppStringLiteral(cpp_class.name) + "\", \"" + EscapeCppStringLiteral(cpp_class.scope) + "\", \""
-                   + EscapeCppStringLiteral(cpp_class.full_name) + "\", \"" + EscapeCppStringLiteral(cpp_class.description) + "\", {";
+                   + EscapeCppStringLiteral(cpp_class.full_name) + "\", \"" + EscapeCppStringLiteral(cpp_class.description) + "\", sizeof("
+                   + cpp_class.full_name + "), alignof(" + cpp_class.full_name + "), " + create_lambda + ", {";
 
         for (Opal::u64 j = 0; j < cpp_class.properties.GetSize(); j++)
         {

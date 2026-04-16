@@ -244,6 +244,35 @@ entry->HasAttribute("flags");       // true
 entry->GetAttributeValue("flags");  // "1"
 ```
 
+**Object construction:**
+
+Obsidian can construct reflected class instances through an allocator. The compile-time API returns a typed pointer, while the runtime API returns `void*`. Objects are default-constructed (using their in-class member initializers). Use `Opal::Delete` to destroy them.
+
+```cpp
+Opal::MallocAllocator allocator;
+
+// Compile-time: returns a typed pointer
+Character* player = Obs::Class<Character>::Create(&allocator);
+// player->health == 100, player->speed == 5.0f, etc.
+
+// Runtime: look up by name, returns void*
+void* obj = Obs::ClassCollection::Construct("Character", &allocator);
+auto* player2 = static_cast<Character*>(obj);
+
+// Returns nullptr for unknown types
+void* bad = Obs::ClassCollection::Construct("NonExistent", &allocator);
+// bad == nullptr
+
+// Can also construct via ClassEntry directly
+const Obs::ClassEntry* entry = nullptr;
+Obs::ClassCollection::GetClassEntry("Character", entry);
+void* obj2 = entry->create(&allocator);
+// entry->size and entry->alignment are also available
+
+// Cleanup
+Opal::Delete(&allocator, player);
+```
+
 **Runtime reflection (string-based lookup):**
 
 ```cpp

@@ -37,6 +37,7 @@ target_compile_definitions(test-cpp-project PRIVATE CATCH_AMALGAMATED_CUSTOM_MAI
 target_include_directories(test-cpp-project PRIVATE include ${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_SOURCE_DIR}/include)
 target_include_directories(test-cpp-project PRIVATE third-party/catch2/include)
 target_include_directories(test-cpp-project PRIVATE third-party/catch2/include/catch2)
+target_link_libraries(test-cpp-project PRIVATE opal)
 
 function(get_include_directories OUT_GENERATOR TARGET)
     set(${OUT_GENERATOR} $<JOIN:$<TARGET_PROPERTY:${TARGET},INCLUDE_DIRECTORIES>,,> PARENT_SCOPE)

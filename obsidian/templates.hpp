@@ -10,6 +10,8 @@ constexpr const char* k_reflection_header_template = R"(// AUTO-GENERATED. DO NO
 #include <cstring>
 #include <vector>
 
+#include "opal/allocator.h"
+
 __refl_includes__
 
 namespace Obs
@@ -104,6 +106,9 @@ struct ClassEntry
     const char* scope;
     const char* scoped_name;
     const char* description;
+    int size;
+    int alignment;
+    void* (*create)(Opal::AllocatorBase* allocator);
 
     std::vector<Property> properties;
     std::vector<Attribute> attributes;
@@ -197,6 +202,8 @@ struct Class<__class_scoped_name__>
 	static const char* GetScope() { return "__class_scope__"; }
 	static const char* GetScopedName() { return "__class_scoped_name__"; }
 	static const char* GetDescription() { return "__class_description__"; }
+
+	static __class_scoped_name__* Create(Opal::AllocatorBase* allocator) { return Opal::New<__class_scoped_name__>(allocator); }
 
 	static Class& Get()
 	{
@@ -324,6 +331,18 @@ constexpr const char* k_class_collection_template = R"(struct ClassCollection
             }
         }
         return false;
+    }
+
+    static void* Construct(const char* name, Opal::AllocatorBase* allocator)
+    {
+        for (const ClassEntry& entry : entries)
+        {
+            if (strcmp(entry.name, name) == 0)
+            {
+                return entry.create(allocator);
+            }
+        }
+        return nullptr;
     }
 
     static bool GetClassProperties(const ClassEntry& class_entry, const std::vector<Property>*& out_properties)
